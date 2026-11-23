@@ -1,0 +1,81 @@
+From 1fcb12a88c32fb0d5e787ddb2a94a110ba8d4945 Mon Sep 17 00:00:00 2001
+From: Maintainer <noreply@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 12:10:03 -0300
+Subject: [PATCH 7/8] fix(desktop): unscale PersistentTerminal fixed rect by
+ CSS zoom
+
+Fixes both the top gap above xterm and the overlay covering TerminalRail's + button under browser CSS zoom (documentElement.style.zoom). Note: committed with --no-verify (authorized by Maintainer on local branch theme/one-dark-sync; lefthook uv hook fails in read-only sandbox).
+---
+ .../terminal/persistent.test.tsx              | 19 +++++++++++++++++++
+ .../app/right-sidebar/terminal/persistent.tsx | 18 ++++++++++++++----
+ 2 files changed, 33 insertions(+), 4 deletions(-)
+
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx b/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx
+index 285a7482f2..6947a83b04 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx
+@@ -388,4 +388,23 @@ describe('PersistentTerminal rect tracking', () => {
+     // The PTY survives — only the overlay stands down.
+     expect(mount.container!.querySelector('[data-testid="terminal-workspace"]')).not.toBeNull()
+   })
++
++  it('unscales slot coordinates by currentCSSZoom so the fixed overlay stays aligned under browser zoom', () => {
++    installRaf()
++    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(rect(472, 299, 1586, 527))
++    Object.defineProperty(HTMLElement.prototype, 'currentCSSZoom', { configurable: true, get: () => 1.1 })
++    $terminalTakeover.set(true)
++
++    try {
++      mount.render(<Harness />)
++      const overlay = mount.container!.lastElementChild as HTMLElement
++
++      expect(overlay.style.top).toBe('429px')
++      expect(overlay.style.left).toBe('271px')
++      expect(overlay.style.width).toBe('1443px')
++      expect(overlay.style.height).toBe('480px')
++    } finally {
++      delete (HTMLElement.prototype as { currentCSSZoom?: number }).currentCSSZoom
++    }
++  })
+ })
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx b/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx
+index c0c5936c78..3833398b83 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx
+@@ -127,10 +127,20 @@ export function PersistentTerminal({ onAddSelectionToChat }: PersistentTerminalP
+ 
+       markRightPanePerf('terminal-measure', reason)
+       const r = slot.getBoundingClientRect()
++      // getBoundingClientRect() returns viewport-scaled pixels, while a
++      // position:fixed overlay inside a CSS-zoomed <html> (browser-zoom.ts)
++      // multiplies top/left/width/height by that zoom factor a second time.
++      // Divide by the active CSS zoom so the overlay matches the slot without
++      // shifting down (top gap) or overflowing right over TerminalRail.
++      const cssZoom =
++        (slot as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom ||
++        Number.parseFloat(document.documentElement.style.zoom) ||
++        1
++      const zoom = Number.isFinite(cssZoom) && cssZoom > 0 ? cssZoom : 1
+       // floor top/left + ceil right/bottom: overlay always covers the slot's
+       // full pixel footprint, so half-pixel rects can't leak page bg through.
+-      const top = Math.floor(r.top)
+-      const left = Math.floor(r.left)
++      const top = Math.floor(r.top / zoom)
++      const left = Math.floor(r.left / zoom)
+ 
+       // Inactive keep-alive panes deliberately retain the same rect as the
+       // foreground pane, so visibility must be sampled independently.
+@@ -138,8 +148,8 @@ export function PersistentTerminal({ onAddSelectionToChat }: PersistentTerminalP
+         hidden: isElementInHiddenPane(slot),
+         top,
+         left,
+-        width: Math.ceil(r.right) - left,
+-        height: Math.ceil(r.bottom) - top
++        width: Math.ceil(r.right / zoom) - left,
++        height: Math.ceil(r.bottom / zoom) - top
+       }
+ 
+       if (!sameRect(prev, next)) {
+-- 
+2.47.3
+

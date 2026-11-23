@@ -1,0 +1,78 @@
+From 8a6db363fc1e51d66bfdd4bd6ce413089b6eda9e Mon Sep 17 00:00:00 2001
+From: Maintainer <noreply@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 11:40:34 -0300
+Subject: [PATCH 4/8] fix(desktop): strip boot gap on fresh persistent shells
+ and retries
+
+Note: committed with --no-verify (authorized by Maintainer on local branch theme/one-dark-sync; lefthook uv hook fails in read-only sandbox).
+---
+ .../right-sidebar/terminal/terminal-session-attempt.ts    | 8 +++++++-
+ .../app/right-sidebar/terminal/use-terminal-session.ts    | 5 ++++-
+ 2 files changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts b/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
+index f5f51b153f..7cd86d591f 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
++++ b/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
+@@ -53,6 +53,8 @@ interface SessionAttemptOptions {
+   isReplayingHistory: () => boolean
+   /** The attempt adopted a live session: seed size, shell name and selection. */
+   onStarted: (session: HermesTerminalSession) => void
++  /** Re-arm leading blank-line stripping for each fresh shell attempt. */
++  resetBootGap?: () => void
+   /** Cwd for the next shell; read at each start so a retry follows a `cd`. */
+   resolveCwd: () => string
+   /** Runs once start metadata says whether the server replays history itself. */
+@@ -85,6 +87,7 @@ export function createSessionAttemptController(
+     isDisposed,
+     isReplayingHistory,
+     onStarted,
++    resetBootGap,
+     resolveCwd,
+     restoreHistory,
+     sessionIdRef,
+@@ -103,6 +106,7 @@ export function createSessionAttemptController(
+ 
+   const startSession = () => {
+     cleanupAttempt?.()
++    resetBootGap?.()
+     let current = true
+     let attemptSessionId: string | null = null
+     let hadReplay = false
+@@ -204,7 +208,9 @@ export function createSessionAttemptController(
+             }
+ 
+             if (options?.replay) {
+-              hadReplay = true
++              if (data.trim().length > 0) {
++                hadReplay = true
++              }
+               ++replayWrites
+               term.write(data, () => {
+                 --replayWrites
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts b/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts
+index 7b3459c412..e36603c3ba 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts
++++ b/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts
+@@ -260,7 +260,7 @@ export function useTerminalSession({
+     term.loadAddon(terminalWebLinksAddon())
+     term.unicode.activeVersion = '11'
+ 
+-    const stripBootGap = createBootGapFilter()
++    let stripBootGap = createBootGapFilter()
+ 
+     // Created first because history replay and snapshots read whether its shell
+     // is server-persistent; its callbacks only run once start() is called.
+@@ -277,6 +277,9 @@ export function useTerminalSession({
+         selectionRef.current = initial
+         selectionLabelRef.current = initial ? terminalSelectionLabel(term, shellNameRef.current, initial) : ''
+       },
++      resetBootGap: () => {
++        stripBootGap = createBootGapFilter()
++      },
+       resolveCwd: () => lastObservedCwdRef.current || initialRestoreCwdRef.current || cwd,
+       restoreHistory: () => history.restore(),
+       sessionIdRef,
+-- 
+2.47.3
+

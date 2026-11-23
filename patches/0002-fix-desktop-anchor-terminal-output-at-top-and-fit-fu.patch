@@ -1,0 +1,116 @@
+From bc1921a2c74c39f9f68b8d7ea1b9fa9a468c4c29 Mon Sep 17 00:00:00 2001
+From: Maintainer <noreply@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 11:25:07 -0300
+Subject: [PATCH 2/8] fix(desktop): anchor terminal output at top and fit full
+ pane height
+
+Note: committed with --no-verify (authorized by Maintainer on local branch theme/one-dark-sync; lefthook uv hook fails in read-only sandbox).
+---
+ .../app/right-sidebar/terminal/instance.tsx   |  2 +-
+ .../terminal/terminal-session-attempt.ts      | 19 +++++++++++++++----
+ .../terminal/use-terminal-session.ts          |  7 +++++--
+ 3 files changed, 21 insertions(+), 7 deletions(-)
+
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/instance.tsx b/apps/desktop/src/app/right-sidebar/terminal/instance.tsx
+index 1612790ea3..96efbf7092 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/instance.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/instance.tsx
+@@ -18,7 +18,7 @@ const INSTANCE_CLASS = 'absolute inset-0 flex flex-col bg-(--ui-terminal-surface
+ // WebGL fast-path paints the canvas from ITheme.background instead) — both
+ // resolve to the same token, so the two renderers can't disagree.
+ const HOST_CLASS =
+-  'h-full min-h-0 overflow-hidden text-(--ui-text-secondary) [&_.xterm]:h-full [&_.xterm-screen]:bg-(--ui-terminal-surface-background)! [&_.xterm-viewport]:bg-(--ui-terminal-surface-background)!'
++  'flex-1 h-full min-h-0 overflow-hidden text-(--ui-text-secondary) [&_.xterm]:h-full [&_.xterm-screen]:bg-(--ui-terminal-surface-background)! [&_.xterm-viewport]:bg-(--ui-terminal-surface-background)!'
+ 
+ interface TerminalInstanceProps {
+   id: string
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts b/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
+index d033ab65e7..4783d52d28 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
++++ b/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
+@@ -104,6 +104,7 @@ export function createSessionAttemptController(
+     cleanupAttempt?.()
+     let current = true
+     let attemptSessionId: string | null = null
++    let hadReplay = false
+ 
+     const releaseSession = (sid: string) =>
+       persistent && terminalApi.detach ? terminalApi.detach(sid) : terminalApi.dispose(sid)
+@@ -202,11 +203,12 @@ export function createSessionAttemptController(
+             }
+ 
+             if (options?.replay) {
++              hadReplay = true
+               ++replayWrites
+               term.write(data, () => {
+                 --replayWrites
+               })
+-            } else if (persistent) {
++            } else if (persistent && hadReplay) {
+               term.write(data)
+             } else {
+               writeOutput(data)
+@@ -221,9 +223,14 @@ export function createSessionAttemptController(
+ 
+             if (persistent && exit.signal) {
+               resumeOnly = exit.signal !== 'expired'
+-              armRetry(
+-                `\r\n${TERMINAL_EXIT_MESSAGES[exit.signal] || 'Terminal disconnected. Press Enter to reconnect.'}`
+-              )
++              if (exit.signal === 'expired') {
++                term.write('\u001bc')
++                armRetry(TERMINAL_EXIT_MESSAGES.expired)
++              } else {
++                armRetry(
++                  `\r\n${TERMINAL_EXIT_MESSAGES[exit.signal] || 'Terminal disconnected. Press Enter to reconnect.'}`
++                )
++              }
+ 
+               return
+             }
+@@ -296,6 +303,7 @@ export function createSessionAttemptController(
+           removeExitedTerminal(id)
+         } else if (signal === 'expired') {
+           resumeOnly = false
++          term.write('\u001bc')
+           armRetry(TERMINAL_EXIT_MESSAGES.expired)
+         } else if (hostHas('retryTerminalSpawn') || runsOverSsh(gateway)) {
+           // A browser host or an SSH gateway can come back (host offline,
+@@ -320,6 +328,9 @@ export function createSessionAttemptController(
+     if (!sessionId && retrySession && data === '\r') {
+       const retry = retrySession
+       retrySession = null
++      if (!resumeOnly) {
++        term.write('\u001bc')
++      }
+       setStatus('starting')
+       retry()
+ 
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts b/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts
+index 68d46dff25..7b3459c412 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts
++++ b/apps/desktop/src/app/right-sidebar/terminal/use-terminal-session.ts
+@@ -572,7 +572,7 @@ export function useTerminalSession({
+   // from wiped atlas pages. Also covers the first open: status flips to 'open'
+   // once the shell attaches.
+   useEffect(() => {
+-    if (!active || status !== 'open') {
++    if (!active) {
+       return
+     }
+ 
+@@ -581,7 +581,10 @@ export function useTerminalSession({
+ 
+       fitRef.current?.()
+       redrawAllTerminals()
+-      term?.focus()
++
++      if (status === 'open' || status === 'closed') {
++        term?.focus()
++      }
+     })
+ 
+     return () => cancelAnimationFrame(frame)
+-- 
+2.47.3
+

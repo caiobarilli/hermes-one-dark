@@ -1,0 +1,41 @@
+From e4c3f7e65bf0ed47af43bdedf222219d88f22bd4 Mon Sep 17 00:00:00 2001
+From: Maintainer <noreply@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 11:41:38 -0300
+Subject: [PATCH 6/8] fix(desktop): stretch terminal rail vertical border to
+ full pane height
+
+Note: committed with --no-verify (authorized by Maintainer on local branch theme/one-dark-sync; lefthook uv hook fails in read-only sandbox).
+---
+ apps/desktop/src/app/right-sidebar/terminal/chrome.tsx | 2 +-
+ apps/desktop/src/app/right-sidebar/terminal/rail.tsx   | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx b/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx
+index 1fda80a5b8..dfcb2fbe31 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx
+@@ -14,7 +14,7 @@ export function TerminalPaneChrome() {
+   const terminals = useStore($terminals)
+ 
+   return (
+-    <div className="flex min-h-0 min-w-0 flex-1">
++    <div className="flex h-full min-h-0 min-w-0 flex-1 items-stretch">
+       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+         <TerminalSlot />
+       </div>
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/rail.tsx b/apps/desktop/src/app/right-sidebar/terminal/rail.tsx
+index 05c516dac9..9fd84136ba 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/rail.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/rail.tsx
+@@ -47,7 +47,7 @@ export function TerminalRail() {
+ 
+   return (
+     <div
+-      className="group/rail relative z-40 flex h-full w-9 shrink-0 flex-col items-center border-l border-(--ui-stroke-quaternary) bg-(--ui-terminal-surface-background)"
++      className="group/rail relative z-40 flex h-full w-9 shrink-0 self-stretch flex-col items-center border-l border-(--ui-stroke-quaternary) bg-(--ui-terminal-surface-background)"
+       // The rail sits at the pane's outer edge, under the collapsed sidebars'
+       // hover-reveal triggers; mark it so those triggers go pointer-transparent
+       // while it's hovered (see the suppression rules in styles.css) and a reach
+-- 
+2.47.3
+

@@ -1,0 +1,648 @@
+From 98e33767125e6814222c5ad25b3da99e5577d7ea Mon Sep 17 00:00:00 2001
+From: Maintainer <noreply@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 11:07:05 -0300
+Subject: [PATCH 1/8] feat(desktop): add One Dark Pro theme preset, UI
+ refinements, and tests
+
+---
+ apps/desktop/src/app/chat/sidebar/index.tsx   |  4 +-
+ .../src/app/chat/sidebar/session-row.tsx      |  5 ++-
+ .../assistant-ui/thread/message-parts.tsx     | 26 ++++++++++-
+ apps/desktop/src/components/ui/pane-tab.tsx   | 19 ++++----
+ .../src/components/ui/search-field.tsx        |  1 +
+ apps/desktop/src/styles.css                   |  1 +
+ apps/desktop/src/themes/backend-sync.test.ts  | 35 +++++++++++++++
+ apps/desktop/src/themes/context.test.tsx      | 43 ++++++++++++++++++
+ apps/desktop/src/themes/context.tsx           | 28 +++++++++++-
+ .../src/themes/persist-accent.test.tsx        | 45 ++++++++++++++++++-
+ apps/desktop/src/themes/persist-accent.ts     |  3 +-
+ apps/desktop/src/themes/retint.test.ts        | 16 +++++++
+ apps/desktop/src/themes/retint.ts             | 20 ++++++++-
+ apps/desktop/src/themes/skin.test.ts          | 25 +++++++++++
+ apps/desktop/src/themes/skin.ts               |  5 ++-
+ apps/desktop/src/themes/user-themes.ts        | 27 +++++++++--
+ apps/desktop/vitest.config.ts                 |  2 +-
+ 17 files changed, 278 insertions(+), 27 deletions(-)
+
+diff --git a/apps/desktop/src/app/chat/sidebar/index.tsx b/apps/desktop/src/app/chat/sidebar/index.tsx
+index b588ae9530..01ef166af9 100644
+--- a/apps/desktop/src/app/chat/sidebar/index.tsx
++++ b/apps/desktop/src/app/chat/sidebar/index.tsx
+@@ -1593,9 +1593,9 @@ export function ChatSidebar({
+                       // resolved region has been observed to swallow clicks on the
+                       // top rows. Same carve-out as USER_BUBBLE_BASE_CLASS in
+                       // thread.tsx.
+-                      'flex h-7 w-full justify-start gap-2 rounded-md border border-transparent px-2 text-left text-[0.8125rem] font-medium text-(--ui-text-secondary) transition-colors duration-100 ease-out [-webkit-app-region:no-drag] hover:bg-(--ui-control-hover-background) hover:text-foreground hover:transition-none',
++                      'flex h-7 w-full justify-start gap-2 rounded-md border-b border-b-(--ui-stroke-tertiary) px-2 text-left text-[0.8125rem] font-medium text-(--ui-text-secondary) transition-colors duration-100 ease-out [-webkit-app-region:no-drag] hover:bg-(--ui-control-hover-background) hover:text-foreground hover:transition-none',
+                       active &&
+-                        'border-(--ui-stroke-tertiary) bg-(--ui-control-active-background) text-foreground shadow-none hover:border-(--ui-stroke-tertiary)!',
++                        'border-b-2! border-b-(--pane-tab-active-accent,var(--theme-primary))! bg-(--ui-control-active-background) text-foreground shadow-none',
+                       !isInteractive &&
+                         'cursor-default hover:border-transparent hover:bg-transparent hover:text-inherit'
+                     )}
+diff --git a/apps/desktop/src/app/chat/sidebar/session-row.tsx b/apps/desktop/src/app/chat/sidebar/session-row.tsx
+index 9f24a5c7db..5afd7583a9 100644
+--- a/apps/desktop/src/app/chat/sidebar/session-row.tsx
++++ b/apps/desktop/src/app/chat/sidebar/session-row.tsx
+@@ -372,13 +372,14 @@ function SidebarSessionRowImpl({
+       <SidebarRowShell
+         actions={card ? undefined : actionsNode}
+         className={cn(
+-          'group row-hover relative',
++          'group row-hover relative border-b border-b-(--ui-stroke-tertiary)',
+           card && SIDEBAR_ROW_CARD_MIN_H,
+           // Density-aware minimum heights for the inline (non-card) row: the
+           // metadata / preview lines below need the extra rows (#68119).
+           !card && density !== 'compact' && 'min-h-[2.75rem]',
+           !card && density === 'detailed' && 'min-h-[3.875rem]',
+-          isSelected && 'bg-(--ui-row-active-background)',
++          isSelected &&
++            'border-b-2! border-b-(--pane-tab-active-accent,var(--theme-primary))! bg-(--ui-row-active-background)',
+           // Open in another pane: the SAME band, just weaker. Its own mixed
+           // token rather than row opacity — dimming the whole row would take
+           // the title and the status dot down with it.
+diff --git a/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx b/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx
+index 4d56c0e9f7..f2b400b2ed 100644
+--- a/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx
++++ b/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx
+@@ -7,7 +7,7 @@ import {
+   useMessagePartText
+ } from '@assistant-ui/react'
+ import { useStore } from '@nanostores/react'
+-import { type ComponentProps, type FC, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
++import { type ComponentProps, type CSSProperties, type FC, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+ 
+ import { useSessionView } from '@/app/chat/session-view'
+ import { CatalogInstallTool } from '@/components/assistant-ui/catalog-install-tool'
+@@ -344,7 +344,29 @@ const ThinkingDisclosure: FC<{
+           </span>
+         }
+       >
+-        <span className={cn(SCAFFOLD_LABEL_CLASS, pending && 'shimmer')}>{thoughtLabel}</span>
++        {pending ? (
++          // HyperX Sun: each letter rides its own loop. Durations and delays
++          // are a fixed function of the letter index — never re-randomized —
++          // so a re-render resumes the same phase instead of flickering.
++          <span aria-label={thoughtLabel} className={cn(SCAFFOLD_LABEL_CLASS, 'od-sun')}>
++            {Array.from(thoughtLabel).map((letter, index) => (
++              <span
++                aria-hidden="true"
++                key={`${index}-${letter}`}
++                style={
++                  {
++                    '--delay': `-${((index % 8) * 0.25).toFixed(2)}s`,
++                    '--d': `${(1.6 + (index % 8) * 0.19).toFixed(2)}s`
++                  } as CSSProperties
++                }
++              >
++                {letter}
++              </span>
++            ))}
++          </span>
++        ) : (
++          <span className={SCAFFOLD_LABEL_CLASS}>{thoughtLabel}</span>
++        )}
+       </ScaffoldRow>
+       {open && (
+         <div
+diff --git a/apps/desktop/src/components/ui/pane-tab.tsx b/apps/desktop/src/components/ui/pane-tab.tsx
+index 4a2ee7de61..96b44fe6ce 100644
+--- a/apps/desktop/src/components/ui/pane-tab.tsx
++++ b/apps/desktop/src/components/ui/pane-tab.tsx
+@@ -14,26 +14,27 @@ export const PANE_TAB_STRIP_LINE_RIGHT = 'shadow-[inset_-1px_0_0_var(--ui-stroke
+ 
+ // Surface tokens become transparent under glass; the body owns the tint.
+ // The close-button fade masks the label, so it needs no second surface fill.
++// Border rule: bottom only — 1px stroke at rest, 2px accent when active —
++// with no top/left edges, so tabs read as one continuous ruled strip.
+ const TAB =
+-  'group/tab relative flex shrink-0 items-center border-transparent bg-(--tab-bg) text-[0.6875rem] font-medium [-webkit-app-region:no-drag] focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--ui-accent)'
++  'group/tab relative flex shrink-0 items-center border-b border-b-(--ui-stroke-tertiary) bg-(--tab-bg) text-[0.6875rem] font-medium [-webkit-app-region:no-drag] focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--ui-accent)'
+ 
+ // Full height: with the strip's rule removed there is no last-pixel row to
+ // leave uncovered, so tabs fill the bar and no sliver of gutter shows through.
+-const TAB_HORIZONTAL = 'h-full min-w-0 max-w-48 not-first:border-l not-first:border-l-(--ui-stroke-quaternary)'
++const TAB_HORIZONTAL = 'h-full min-w-0 max-w-48'
+ 
+ // A closeable tab's floor keeps short labels left of the close button.
+ // A floor, not padding — a tab already wider than it pays nothing.
+ const TAB_CLOSEABLE = 'min-w-13'
+ 
+-const TAB_VERTICAL =
+-  'w-full max-h-48 justify-center not-first:border-t not-first:border-t-(--ui-stroke-quaternary) [writing-mode:vertical-rl]'
++const TAB_VERTICAL = 'w-full max-h-48 justify-center [writing-mode:vertical-rl]'
+ 
+ const TAB_ACTIVE = 'h-full text-foreground [--tab-bg:var(--pane-tab-active-bg,var(--ui-editor-surface-background))]'
+ 
+-// Horizontal only: the active tab is the sole seam on the strip — a
+-// theme-primary underline drawn as an inset shadow in its own last pixel row,
+-// so it costs no layout and can't shift the tab.
+-const TAB_ACTIVE_UNDERLINE = 'shadow-[inset_0_-2px_0_var(--pane-tab-active-accent,var(--theme-primary))]'
++// The active tab's underline is a real border, not an inset shadow: it sits
++// on the tab's own edge, so it meets the sidebar seam with no 1px step, and
++// border-box height means the thicker rule never shifts the tab.
++const TAB_ACTIVE_UNDERLINE = 'border-b-2! border-b-(--pane-tab-active-accent,var(--theme-primary))!'
+ 
+ // Inactive = gutter, defaulting to the shared chrome surface so a strip that
+ // sets no vars still matches the sidebar/titlebar instead of falling through to
+@@ -107,7 +108,7 @@ export const PaneTab = React.forwardRef<HTMLDivElement, PaneTabProps>(function P
+         !vertical && onClose && TAB_CLOSEABLE,
+         edge,
+         active
+-          ? cn(TAB_ACTIVE, !vertical && TAB_ACTIVE_UNDERLINE)
++          ? cn(TAB_ACTIVE, TAB_ACTIVE_UNDERLINE)
+           : cn(TAB_IDLE, edge && `${edge}-(--ui-stroke-tertiary)`),
+         selected && TAB_SELECTED,
+         className
+diff --git a/apps/desktop/src/components/ui/search-field.tsx b/apps/desktop/src/components/ui/search-field.tsx
+index 269d5501fe..31acfab238 100644
+--- a/apps/desktop/src/components/ui/search-field.tsx
++++ b/apps/desktop/src/components/ui/search-field.tsx
+@@ -70,6 +70,7 @@ export function SearchField({
+ 
+   return (
+     <div
++      data-slot="search-field"
+       className={cn(
+         // min-w-0 is load-bearing: without it the content-sized input sets the
+         // container's flex min-width and the field bulldozes its siblings
+diff --git a/apps/desktop/src/styles.css b/apps/desktop/src/styles.css
+index a842217623..e966a06164 100644
+--- a/apps/desktop/src/styles.css
++++ b/apps/desktop/src/styles.css
+@@ -3,6 +3,7 @@
+ @import 'tw-shimmer';
+ @import 'katex/dist/katex.min.css';
+ @import '@vscode/codicons/dist/codicon.css';
++@import './themes/one-dark.css';
+ 
+ /* Titlebar clusters: 24×24 hit targets, 13.9px glyphs. codicon.css is
+    unlayered (`font: 16px/1`); Tailwind utilities in @layer lose that fight. */
+diff --git a/apps/desktop/src/themes/backend-sync.test.ts b/apps/desktop/src/themes/backend-sync.test.ts
+index fe8f517058..af08b17094 100644
+--- a/apps/desktop/src/themes/backend-sync.test.ts
++++ b/apps/desktop/src/themes/backend-sync.test.ts
+@@ -157,6 +157,41 @@ describe('ingestBackendSkin', () => {
+     expect(fresh.$backendThemes.get().neon?.name).toBe('neon')
+   })
+ 
++  it('paints a legacy One Dark snapshot at boot and keeps a saved highlight on reconnect', async () => {
++    const snapshot = {
++      name: 'one-dark',
++      label: 'One-dark',
++      description: 'Hermes skin',
++      colors: { background: '#21252b', foreground: '#abb2bf', primary: '#c678dd' }
++    }
++    const savedName = 'one-dark-accent-2ea043'
++    window.localStorage.setItem('hermes-desktop-backend-themes-v1', JSON.stringify({ 'one-dark': snapshot }))
++    window.localStorage.setItem('hermes-desktop-theme-v2', 'one-dark')
++    vi.resetModules()
++    await import('./context')
++    expect(document.documentElement.style.getPropertyValue('--ui-bg-chrome')).toBe('#282c34')
++    expect(document.documentElement.style.getPropertyValue('--ui-text-tertiary')).toBe('#7f848e')
++    expect(window.localStorage.getItem('hermes-boot-background')).toBe('#282c34')
++
++    window.localStorage.setItem('hermes-desktop-theme-v2', savedName)
++    window.localStorage.setItem(
++      'hermes-desktop-user-themes-v1',
++      JSON.stringify({
++        [savedName]: { ...snapshot, name: savedName, accentOf: 'one-dark' }
++      })
++    )
++    vi.resetModules()
++    const context = await import('./context')
++    const before = document.documentElement.style.getPropertyValue('--theme-midground')
++    expect(before).not.toBe('#c678dd')
++    expect(document.documentElement.style.getPropertyValue('--theme-primary')).toBe('#404754')
++    const fresh = await import('./backend-sync')
++    fresh.ingestBackendSkin(skin('one-dark'), { apply: false })
++    expect(fresh.$pendingSkinApply.get()).toBeNull()
++    expect(context.skinPref.stored('default')).toBe(savedName)
++    expect(document.documentElement.style.getPropertyValue('--theme-midground')).toBe(before)
++  })
++
+   it('drops junk and built-in names from the cached registry', async () => {
+     const mono = { name: 'mono', label: 'x', colors: { background: '#000', foreground: '#fff', primary: '#f0f' } }
+     window.localStorage.setItem('hermes-desktop-backend-themes-v1', JSON.stringify({ mono, bad: { name: 'bad' } }))
+diff --git a/apps/desktop/src/themes/context.test.tsx b/apps/desktop/src/themes/context.test.tsx
+index 36626e5934..8172138c50 100644
+--- a/apps/desktop/src/themes/context.test.tsx
++++ b/apps/desktop/src/themes/context.test.tsx
+@@ -40,6 +40,49 @@ describe('ThemeProvider ← backend skin sync', () => {
+     expect(cssVar('--theme-background-seed')).toBe('#000000')
+   })
+ 
++  it('publishes exact One Dark surfaces, muted text and boot colors, then restores the next theme', () => {
++    let ctx: ReturnType<typeof useTheme>
++    function Probe() {
++      ctx = useTheme()
++
++      return null
++    }
++    render(
++      <ThemeProvider>
++        <Probe />
++      </ThemeProvider>
++    )
++    act(() =>
++      ingestBackendSkin(
++        {
++          name: 'one-dark',
++          colors: { status_bar_bg: '#21252b', ui_accent: '#c678dd', banner_text: '#abb2bf' }
++        },
++        { apply: true }
++      )
++    )
++
++    expect(cssVar('--ui-bg-chrome')).toBe('#282c34')
++    expect(cssVar('--ui-text-tertiary')).toBe('#7f848e')
++    expect(cssVar('--dt-muted-foreground')).toBe('#7f848e')
++    expect(cssVar('--dt-popover')).toBe('#21252b')
++    expect(cssVar('--ui-bg-input')).toBe('#1d1f23')
++    expect(cssVar('--ui-success')).toBe('#98c379')
++    expect(cssVar('--ui-warning')).toBe('#d19a66')
++    expect(window.localStorage.getItem('hermes-boot-background')).toBe('#282c34')
++    expect(JSON.parse(window.localStorage.getItem('hermes-boot-palette')!).background).toBe('#282c34')
++    expect(document.documentElement.dataset.hermesPalette).toBe('one-dark')
++
++    act(() => ctx!.setTheme('everforest'))
++    expect(cssVar('--ui-bg-chrome')).toBe('')
++    expect(cssVar('--ui-text-tertiary')).toBe('')
++    expect(cssVar('--ui-warning')).toBe('')
++    // Removing previous overrides AFTER writing defaults would erase this.
++    expect(cssVar('--ui-success')).toMatch(/^#[0-9a-f]{6}$/i)
++    expect(cssVar('--ui-success')).not.toBe('#98c379')
++    expect(document.documentElement.dataset.hermesPalette).toBeUndefined()
++  })
++
+   it('repaints an in-place edit of the ACTIVE skin (same name, new palette)', () => {
+     render(
+       <ThemeProvider>
+diff --git a/apps/desktop/src/themes/context.tsx b/apps/desktop/src/themes/context.tsx
+index d8fb990816..0181897de0 100644
+--- a/apps/desktop/src/themes/context.tsx
++++ b/apps/desktop/src/themes/context.tsx
+@@ -32,6 +32,7 @@ import {
+ import { writeBootPalette } from './boot-palette'
+ import { $chatFontFamily, resolveChatFontFamily } from './chat-font'
+ import { harmonize, normalizeHex, readableInk } from './color'
++import { isOneDark, oneDarkProperties, themeAccent } from './one-dark'
+ import { BUILTIN_THEME_LIST, DEFAULT_SKIN_NAME, DEFAULT_TYPOGRAPHY, nousTheme, RETIRED_SKINS } from './presets'
+ import { $pendingModeApply } from './request'
+ import { retintTheme } from './retint'
+@@ -232,7 +233,7 @@ export function accentedTheme(theme: DesktopTheme, accent: string): DesktopTheme
+   const base = accentBase(theme)
+   const hex = normalizeHex(accent)
+ 
+-  if (!hex || hex === normalizeHex(base.colors.primary)) {
++  if (!hex || hex === normalizeHex(themeAccent(base))) {
+     return base
+   }
+ 
+@@ -312,6 +313,8 @@ function applyTypographyKnobs(root: HTMLElement, typo: Partial<DesktopThemeTypog
+   }
+ }
+ 
++let previousPaletteProperties: string[] = []
++
+ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily = $chatFontFamily.get()) {
+   if (typeof document === 'undefined') {
+     return
+@@ -324,6 +327,19 @@ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily
+   const isDark = rendered === 'dark'
+   const midground = c.midground ?? c.ring
+   const skinName = theme.name.endsWith(`-${mode}`) ? theme.name.slice(0, -mode.length - 1) : theme.name
++  const exactPalette = isOneDark(theme)
++
++  // Clear before defaults: success/input/solid-primary are also default-owned.
++  for (const property of previousPaletteProperties) {
++    root.style.removeProperty(property)
++  }
++  previousPaletteProperties = []
++
++  if (exactPalette) {
++    root.dataset.hermesPalette = 'one-dark'
++  } else {
++    delete root.dataset.hermesPalette
++  }
+ 
+   root.style.setProperty('color-scheme', rendered)
+   root.dataset.hermesTheme = skinName
+@@ -390,9 +406,17 @@ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily
+     root.style.setProperty(k, v)
+   }
+ 
++  if (exactPalette) {
++    const properties = oneDarkProperties(c)
++    for (const [key, value] of Object.entries(properties)) {
++      root.style.setProperty(key, value)
++    }
++    previousPaletteProperties = Object.keys(properties)
++  }
++
+   applyTypographyKnobs(root, typo)
+ 
+-  const chromeBg = chromeBackground(c.background, isDark)
++  const chromeBg = exactPalette ? c.background : chromeBackground(c.background, isDark)
+ 
+   window.hermesDesktop?.setTitleBarTheme?.({
+     background: chromeBg,
+diff --git a/apps/desktop/src/themes/persist-accent.test.tsx b/apps/desktop/src/themes/persist-accent.test.tsx
+index c3b38877b8..7fb046c1cf 100644
+--- a/apps/desktop/src/themes/persist-accent.test.tsx
++++ b/apps/desktop/src/themes/persist-accent.test.tsx
+@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+ import { $activeGatewayProfile } from '@/store/profile'
+ 
+ import { $accentOverride, setAccentOverride } from './accent-override'
++import { __resetBackendSkinSync, ingestBackendSkin } from './backend-sync'
+ import { skinPref, ThemeProvider, useTheme } from './context'
+-import { persistAccent } from './persist-accent'
++import { ownAccent, persistAccent } from './persist-accent'
+ import { nousTheme } from './presets'
+ import type { DesktopTheme } from './types'
+ import { $userThemes, installUserTheme, resolveTheme } from './user-themes'
+@@ -30,6 +31,48 @@ afterEach(() => {
+ })
+ 
+ describe('persistAccent', () => {
++  it('previews, saves, reloads and resets the One Dark highlight without changing its neutral primary', () => {
++    __resetBackendSkinSync()
++    ingestBackendSkin({ name: 'one-dark', colors: { ui_accent: '#c678dd' } }, { apply: false })
++    skinPref.assign('default', 'one-dark')
++    const view = render(
++      <ThemeProvider>
++        <ThemeProbe />
++      </ThemeProvider>
++    )
++    expect(ownAccent()).toBe('#e06c75')
++    act(() => setAccentOverride('#2ea043'))
++    const preview = theme.theme.colors
++    expect(preview.primary).toBe('#404754')
++    expect(preview.midground).not.toBe('#c678dd')
++    act(() => persistAccent('#2ea043'))
++    expect(theme.theme.colors).toEqual(preview)
++    expect(theme.themeName).toBe('one-dark-accent-2ea043')
++    const root = document.documentElement.style
++    expect(root.getPropertyValue('--theme-midground')).toBe(preview.midground)
++    expect(root.getPropertyValue('--theme-accent-soft')).toBe(preview.accent)
++    expect(root.getPropertyValue('--theme-primary')).toBe('#404754')
++    expect(root.getPropertyValue('--dt-input')).toBe('#181a1f')
++    expect(root.getPropertyValue('--ui-success')).toBe('#98c379')
++    expect(root.getPropertyValue('--ui-warning')).toBe('#d19a66')
++    const stored = JSON.parse(window.localStorage.getItem('hermes-desktop-user-themes-v1')!)
++    expect(stored[theme.themeName].accentOf).toBe('one-dark')
++    expect(stored[theme.themeName].colors.primary).toBe('#404754')
++    view.unmount()
++    render(
++      <ThemeProvider>
++        <ThemeProbe />
++      </ThemeProvider>
++    )
++    expect(theme.theme.colors).toEqual(preview)
++    act(() => persistAccent('#e06c75'))
++    expect(theme.themeName).toBe('one-dark')
++    expect(theme.theme.colors.accent).toBe('#e06c75')
++    act(() => persistAccent('#e0218a'))
++    act(() => persistAccent(null))
++    expect(theme.themeName).toBe('one-dark')
++  })
++
+   it('saves an accent as the profile theme and returns to Nous on null', () => {
+     render(
+       <ThemeProvider>
+diff --git a/apps/desktop/src/themes/persist-accent.ts b/apps/desktop/src/themes/persist-accent.ts
+index 92becdd30d..11f3fec888 100644
+--- a/apps/desktop/src/themes/persist-accent.ts
++++ b/apps/desktop/src/themes/persist-accent.ts
+@@ -1,5 +1,6 @@
+ import { setAccentOverride } from './accent-override'
+ import { normalizeHex } from './color'
++import { themeAccent } from './one-dark'
+ import { accentBase, accentedTheme, committedTheme } from './context'
+ import { requestTheme } from './request'
+ import { installUserTheme } from './user-themes'
+@@ -24,4 +25,4 @@ export function persistAccent(accent: null | string): void {
+ }
+ 
+ /** The accent the live theme's own palette carries, for previewing a return to it. */
+-export const ownAccent = (): string => accentBase(committedTheme()).colors.primary
++export const ownAccent = (): string => themeAccent(accentBase(committedTheme()))
+diff --git a/apps/desktop/src/themes/retint.test.ts b/apps/desktop/src/themes/retint.test.ts
+index a8b52702eb..1a12a16a7d 100644
+--- a/apps/desktop/src/themes/retint.test.ts
++++ b/apps/desktop/src/themes/retint.test.ts
+@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
+ import { hexToOklch, withHue } from './color'
+ import { githubTheme, nousTheme } from './presets'
+ import { retintTheme } from './retint'
++import { skinToDesktopTheme } from './skin'
+ import type { DesktopThemeColors } from './types'
+ 
+ const HUES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
+@@ -40,6 +41,21 @@ describe('the shipped nous accents', () => {
+ })
+ 
+ describe('retintTheme', () => {
++  it('retints only the One Dark highlight, leaving primary, neutrals and status colors intact', () => {
++    const base = skinToDesktopTheme({ name: 'one-dark', colors: { ui_accent: '#c678dd' } })!
++    expect(retintTheme(base, '#e06c75')).toBe(base)
++    const picked = retintTheme(base, '#2ea043')
++
++    expect(picked.colors.midground).not.toBe(base.colors.midground)
++    expect(picked.colors.accent).toBe(picked.colors.midground)
++    expect(contrastRatio(picked.colors.midground!, base.colors.background)).toBeGreaterThanOrEqual(4.5)
++    expect(contrastRatio(picked.colors.accent, picked.colors.accentForeground)).toBeGreaterThanOrEqual(4.5)
++    const { midground: _m, midgroundForeground: _mf, accent: _a, accentForeground: _af, ...neutrals } = picked.colors
++    const { midground: _bm, midgroundForeground: _bmf, accent: _ba, accentForeground: _baf, ...original } = base.colors
++    expect(neutrals).toEqual(original)
++    expect(picked.darkColors).toEqual(picked.colors)
++  })
++
+   // The load-bearing property: the mix ratios in retint.ts must be the same
+   // ones that produced the shipped palette. If they drift, retinting at the
+   // theme's OWN hue stops being a no-op — and this catches it.
+diff --git a/apps/desktop/src/themes/retint.ts b/apps/desktop/src/themes/retint.ts
+index ff7edb4ec5..191927f392 100644
+--- a/apps/desktop/src/themes/retint.ts
++++ b/apps/desktop/src/themes/retint.ts
+@@ -37,6 +37,7 @@ import {
+   readableInk
+ } from './color'
+ import type { DesktopTheme, DesktopThemeColors } from './types'
++import { isOneDark, themeAccent } from './one-dark'
+ 
+ /** Small uppercase sidebar labels paint in the accent, so it must clear AA. */
+ const ACCENT_MIN_CONTRAST = 4.5
+@@ -174,10 +175,25 @@ export function retintTheme(theme: DesktopTheme, color: string): DesktopTheme {
+   // Recomputing dark from it would round-trip through OKLCH and land a bit or
+   // two off (#4f9e5e → #509e5f) — invisible, but it would mean "no change"
+   // wasn't actually no change.
+-  if (seed.toLowerCase() === theme.colors.primary.toLowerCase()) {
++  if (seed.toLowerCase() === themeAccent(theme).toLowerCase()) {
+     return theme
+   }
+ 
++  if (isOneDark(theme)) {
++    // Its primary/rings/secondary are deliberately neutral, not an accent family.
++    const accent = seedFor(theme.colors, seed)
++    const foreground = readableInk(accent)
++    const colors = {
++      ...theme.colors,
++      midground: accent,
++      midgroundForeground: foreground,
++      accent,
++      accentForeground: foreground
++    }
++
++    return { ...theme, colors, darkColors: colors }
++  }
++
+   const light = seedFor(theme.colors, seed)
+ 
+   const retinted: DesktopTheme = {
+@@ -199,7 +215,7 @@ export function retintTheme(theme: DesktopTheme, color: string): DesktopTheme {
+ 
+ /** The theme's current accent hue in degrees. */
+ export function themeHue(theme: DesktopTheme): number {
+-  const lch = hexToOklch(theme.colors.primary)
++  const lch = hexToOklch(themeAccent(theme))
+ 
+   return lch ? Math.round(lch.h) : 0
+ }
+diff --git a/apps/desktop/src/themes/skin.test.ts b/apps/desktop/src/themes/skin.test.ts
+index 353a690ad4..76d909b15f 100644
+--- a/apps/desktop/src/themes/skin.test.ts
++++ b/apps/desktop/src/themes/skin.test.ts
+@@ -6,6 +6,31 @@ import { skinToDesktopTheme } from './skin'
+ const withColors = (name: string, colors: Record<string, string>) => skinToDesktopTheme({ name, colors })
+ 
+ describe('skinToDesktopTheme', () => {
++  it('maps One Dark Pro explicitly instead of deriving surfaces from terminal chrome', () => {
++    const theme = withColors('one-dark', {
++      status_bar_bg: '#21252b',
++      banner_text: '#abb2bf',
++      banner_dim: '#5c6370',
++      ui_accent: '#c678dd'
++    })!
++
++    expect(theme.colors).toMatchObject({
++      background: '#282c34',
++      foreground: '#abb2bf',
++      card: '#21252b',
++      popover: '#21252b',
++      primary: '#404754',
++      primaryForeground: '#abb2bf',
++      secondary: '#2c313a',
++      accent: '#e06c75',
++      mutedForeground: '#7f848e',
++      border: '#181a1f',
++      ring: '#3e4452'
++    })
++    expect(theme.darkColors).toEqual(theme.colors)
++    expect(theme.name).toBe('one-dark')
++  })
++
+   it('returns null without a name or colors', () => {
+     expect(skinToDesktopTheme({ name: 'x' })).toBeNull()
+     expect(skinToDesktopTheme({ name: '', colors: { background: '#101010' } })).toBeNull()
+diff --git a/apps/desktop/src/themes/skin.ts b/apps/desktop/src/themes/skin.ts
+index 618942a2d6..f96f3d96d6 100644
+--- a/apps/desktop/src/themes/skin.ts
++++ b/apps/desktop/src/themes/skin.ts
+@@ -19,6 +19,7 @@ import { ensureContrast, mix } from '@hermes/shared/color'
+ import type { HermesSkin, SkinColors } from '@hermes/shared/skin'
+ 
+ import { luminance, normalizeHex, readableInk } from './color'
++import { oneDarkTheme } from './one-dark'
+ import type { DesktopTheme, DesktopThemeColors } from './types'
+ 
+ // The accent labels the sidebar in small uppercase text, so it must clear WCAG AA
+@@ -106,7 +107,7 @@ export function skinToDesktopTheme(skin: HermesSkin): DesktopTheme | null {
+     userBubbleBorder: border
+   }
+ 
+-  return {
++  const theme: DesktopTheme = {
+     name,
+     label: titleCase(name),
+     description: 'Hermes skin',
+@@ -118,4 +119,6 @@ export function skinToDesktopTheme(skin: HermesSkin): DesktopTheme | null {
+     // tag — users put CSS in their skin YAML instead of hacking app.asar.
+     customCSS: skin.customCSS?.trim() || undefined
+   }
++
++  return name === 'one-dark' ? oneDarkTheme(theme) : theme
+ }
+diff --git a/apps/desktop/src/themes/user-themes.ts b/apps/desktop/src/themes/user-themes.ts
+index ee02c93146..e1bf69e8a5 100644
+--- a/apps/desktop/src/themes/user-themes.ts
++++ b/apps/desktop/src/themes/user-themes.ts
+@@ -16,7 +16,9 @@ import { registry } from '@/contrib/registry'
+ import { writeJson } from '@/lib/storage'
+ 
+ import { $backendThemes } from './backend-sync'
++import { isOneDark, oneDarkTheme } from './one-dark'
+ import { BUILTIN_THEMES } from './presets'
++import { retintTheme } from './retint'
+ import { type DesktopTheme, isValidTheme } from './types'
+ 
+ const USER_THEMES_KEY = 'hermes-desktop-user-themes-v1'
+@@ -150,12 +152,27 @@ export function contributedThemes(): DesktopTheme[] {
+ export function resolveTheme(name: string): DesktopTheme | undefined {
+   return (
+     BUILTIN_THEMES[name] ??
+-    $userThemes.get()[name] ??
+-    $backendThemes.get()[name] ??
++    resolvedUserTheme($userThemes.get()[name]) ??
++    resolvedBackendTheme($backendThemes.get()[name]) ??
+     contributedThemes().find(theme => theme.name === name)
+   )
+ }
+ 
++function resolvedBackendTheme(theme: DesktopTheme | undefined): DesktopTheme | undefined {
++  return theme?.name === 'one-dark' && !isOneDark(theme) ? oneDarkTheme(theme) : theme
++}
++
++function resolvedUserTheme(theme: DesktopTheme | undefined): DesktopTheme | undefined {
++  // A real installed base wins, including its accent policy. Only rehydrate the
++  // exact generated naming contract; never treat an arbitrary prefix as ours.
++  if (!theme || $userThemes.get()['one-dark'] || theme.accentOf !== 'one-dark' || isOneDark(theme)) {
++    return theme
++  }
++  const match = /^one-dark-accent-([0-9a-f]{6})$/.exec(theme.name)
++
++  return match ? retintTheme(oneDarkTheme(theme), `#${match[1]}`) : theme
++}
++
+ /** Built-ins first (stable order), then contributed, then backend skins, then user installs. */
+ export function listAllThemes(): DesktopTheme[] {
+   const user = $userThemes.get()
+@@ -165,7 +182,9 @@ export function listAllThemes(): DesktopTheme[] {
+   return [
+     ...Object.values(BUILTIN_THEMES),
+     ...contributedThemes().filter(theme => !shadows(theme)),
+-    ...Object.values(backend).filter(theme => !user[theme.name]),
+-    ...Object.values(user)
++    ...Object.values(backend)
++      .filter(theme => !user[theme.name])
++      .map(theme => resolvedBackendTheme(theme)!),
++    ...Object.values(user).map(theme => resolvedUserTheme(theme)!)
+   ]
+ }
+diff --git a/apps/desktop/vitest.config.ts b/apps/desktop/vitest.config.ts
+index 80091e8933..2e4f166c69 100644
+--- a/apps/desktop/vitest.config.ts
++++ b/apps/desktop/vitest.config.ts
+@@ -7,7 +7,7 @@ const reactUi: TestProjectConfiguration = {
+     name: 'ui',
+     environment: 'jsdom',
+     // Keep padding regressions observable instead of mocking the stylesheet away.
+-    css: { include: [/status-stack\.css$/] },
++    css: { include: [/status-stack\.css$/, /one-dark\.css(?:\?|$)/] },
+     setupFiles: ['./vitest.setup.ts'],
+     include: ['src/**/*.test.{ts,tsx}'],
+     globals: true,
+-- 
+2.47.3
+

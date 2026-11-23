@@ -1,0 +1,155 @@
+From 13714a86d3bc1e1ca047b52e24eaea5c52f3a05c Mon Sep 17 00:00:00 2001
+From: Maintainer <noreply@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 12:15:32 -0300
+Subject: [PATCH 8/8] fix(desktop): unscale selection anchor by CSS zoom and
+ floor overlay right edge
+
+Also adds parameterized zoom tests (0.9..1.5) for PersistentTerminal and zoom anchor test for terminalSelectionAnchor. Note: committed with --no-verify (authorized by Maintainer on local branch theme/one-dark-sync; lefthook uv hook fails in read-only sandbox).
+---
+ .../terminal/persistent.test.tsx              | 43 +++++++++++--------
+ .../app/right-sidebar/terminal/persistent.tsx |  7 +--
+ .../right-sidebar/terminal/selection.test.ts  | 21 ++++++++-
+ .../app/right-sidebar/terminal/selection.ts   | 12 +++++-
+ 4 files changed, 60 insertions(+), 23 deletions(-)
+
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx b/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx
+index 6947a83b04..b73966fe43 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/persistent.test.tsx
+@@ -389,22 +389,31 @@ describe('PersistentTerminal rect tracking', () => {
+     expect(mount.container!.querySelector('[data-testid="terminal-workspace"]')).not.toBeNull()
+   })
+ 
+-  it('unscales slot coordinates by currentCSSZoom so the fixed overlay stays aligned under browser zoom', () => {
+-    installRaf()
+-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(rect(472, 299, 1586, 527))
+-    Object.defineProperty(HTMLElement.prototype, 'currentCSSZoom', { configurable: true, get: () => 1.1 })
+-    $terminalTakeover.set(true)
+-
+-    try {
+-      mount.render(<Harness />)
+-      const overlay = mount.container!.lastElementChild as HTMLElement
+-
+-      expect(overlay.style.top).toBe('429px')
+-      expect(overlay.style.left).toBe('271px')
+-      expect(overlay.style.width).toBe('1443px')
+-      expect(overlay.style.height).toBe('480px')
+-    } finally {
+-      delete (HTMLElement.prototype as { currentCSSZoom?: number }).currentCSSZoom
++  it.each([0.9, 1, 1.1, 1.25, 1.5])(
++    'unscales slot coordinates by currentCSSZoom (%s) and keeps right edge clear of TerminalRail',
++    zoom => {
++      installRaf()
++      const slotRect = rect(472, 299, 1586, 527)
++      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(slotRect)
++      Object.defineProperty(HTMLElement.prototype, 'currentCSSZoom', { configurable: true, get: () => zoom })
++      $terminalTakeover.set(true)
++
++      try {
++        mount.render(<Harness />)
++        const overlay = mount.container!.lastElementChild as HTMLElement
++        const expectedTop = Math.floor(slotRect.top / zoom)
++        const expectedLeft = Math.floor(slotRect.left / zoom)
++        const expectedWidth = Math.max(0, Math.floor(slotRect.right / zoom) - expectedLeft)
++        const expectedHeight = Math.ceil(slotRect.bottom / zoom) - expectedTop
++
++        expect(overlay.style.top).toBe(`${expectedTop}px`)
++        expect(overlay.style.left).toBe(`${expectedLeft}px`)
++        expect(overlay.style.width).toBe(`${expectedWidth}px`)
++        expect(overlay.style.height).toBe(`${expectedHeight}px`)
++        expect((expectedLeft + expectedWidth) * zoom).toBeLessThanOrEqual(slotRect.right + 1e-6)
++      } finally {
++        delete (HTMLElement.prototype as { currentCSSZoom?: number }).currentCSSZoom
++      }
+     }
+-  })
++  )
+ })
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx b/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx
+index 3833398b83..9914cd9637 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/persistent.tsx
+@@ -137,8 +137,9 @@ export function PersistentTerminal({ onAddSelectionToChat }: PersistentTerminalP
+         Number.parseFloat(document.documentElement.style.zoom) ||
+         1
+       const zoom = Number.isFinite(cssZoom) && cssZoom > 0 ? cssZoom : 1
+-      // floor top/left + ceil right/bottom: overlay always covers the slot's
+-      // full pixel footprint, so half-pixel rects can't leak page bg through.
++      // floor top/left + floor right (width) + ceil bottom (height): overlay
++      // aligns flush with the slot without encroaching 1px onto TerminalRail's
++      // left border under fractional zoom.
+       const top = Math.floor(r.top / zoom)
+       const left = Math.floor(r.left / zoom)
+ 
+@@ -148,7 +149,7 @@ export function PersistentTerminal({ onAddSelectionToChat }: PersistentTerminalP
+         hidden: isElementInHiddenPane(slot),
+         top,
+         left,
+-        width: Math.ceil(r.right / zoom) - left,
++        width: Math.max(0, Math.floor(r.right / zoom) - left),
+         height: Math.ceil(r.bottom / zoom) - top
+       }
+ 
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/selection.test.ts b/apps/desktop/src/app/right-sidebar/terminal/selection.test.ts
+index 8ecfc4e087..5efcb2484e 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/selection.test.ts
++++ b/apps/desktop/src/app/right-sidebar/terminal/selection.test.ts
+@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
+ 
+ import { isComposerChord } from '@/lib/keybinds/chords'
+ 
+-import { isMacPlatform, shouldOwnAddSelectionShortcut } from './selection'
++import { isMacPlatform, shouldOwnAddSelectionShortcut, terminalSelectionAnchor } from './selection'
+ 
+ const key = (init: Partial<KeyboardEvent> & { key: string }) =>
+   ({
+@@ -34,3 +34,22 @@ describe('shouldOwnAddSelectionShortcut', () => {
+     expect(isComposerChord(chord)).toBe(true)
+   })
+ })
++
++describe('terminalSelectionAnchor', () => {
++  it('unscales selection rect deltas by currentCSSZoom so Add to chat aligns under browser zoom', () => {
++    const host = document.createElement('div')
++    const selectionLayer = document.createElement('div')
++    selectionLayer.className = 'xterm-selection'
++    const band = document.createElement('div')
++    selectionLayer.appendChild(band)
++    host.appendChild(selectionLayer)
++
++    Object.defineProperty(host, 'clientWidth', { configurable: true, value: 400 })
++    Object.defineProperty(host, 'clientHeight', { configurable: true, value: 200 })
++    Object.defineProperty(host, 'currentCSSZoom', { configurable: true, value: 1.25 })
++    host.getBoundingClientRect = () => ({ left: 100, top: 200, right: 600, bottom: 450, width: 500, height: 250 }) as DOMRect
++    band.getBoundingClientRect = () => ({ left: 225, top: 250, right: 325, bottom: 275, width: 100, height: 25 }) as DOMRect
++
++    expect(terminalSelectionAnchor(host)).toEqual({ left: 100, top: 64 })
++  })
++})
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/selection.ts b/apps/desktop/src/app/right-sidebar/terminal/selection.ts
+index 6042cd2328..76e3bd5bf6 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/selection.ts
++++ b/apps/desktop/src/app/right-sidebar/terminal/selection.ts
+@@ -131,9 +131,17 @@ export function terminalSelectionAnchor(host: HTMLDivElement): CSSProperties | n
+   }
+ 
+   const hostRect = host.getBoundingClientRect()
++  const cssZoom =
++    (host as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom ||
++    (typeof document !== 'undefined' ? Number.parseFloat(document.documentElement.style.zoom) : 1) ||
++    1
++  const zoom = Number.isFinite(cssZoom) && cssZoom > 0 ? cssZoom : 1
+   const buttonWidth = 128
+-  const left = Math.min(Math.max(rect.left - hostRect.left, 8), Math.max(8, host.clientWidth - buttonWidth - 8))
+-  const top = Math.min(Math.max(rect.bottom - hostRect.top + 4, 8), Math.max(8, host.clientHeight - 34))
++  const left = Math.min(
++    Math.max((rect.left - hostRect.left) / zoom, 8),
++    Math.max(8, host.clientWidth - buttonWidth - 8)
++  )
++  const top = Math.min(Math.max((rect.bottom - hostRect.top) / zoom + 4, 8), Math.max(8, host.clientHeight - 34))
+ 
+   return { left, top }
+ }
+-- 
+2.47.3
+

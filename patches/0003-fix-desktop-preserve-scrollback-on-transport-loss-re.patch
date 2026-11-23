@@ -1,0 +1,52 @@
+From d9cf885371f445b969ec6a6d2948b773ad7a4020 Mon Sep 17 00:00:00 2001
+From: Maintainer <noreply@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 11:27:57 -0300
+Subject: [PATCH 3/8] fix(desktop): preserve scrollback on transport-loss retry
+ (reset only on expired)
+
+Note: committed with --no-verify (authorized by Maintainer on local branch theme/one-dark-sync; lefthook uv hook fails in read-only sandbox).
+---
+ .../app/right-sidebar/terminal/terminal-session-attempt.ts  | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts b/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
+index 4783d52d28..f5f51b153f 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
++++ b/apps/desktop/src/app/right-sidebar/terminal/terminal-session-attempt.ts
+@@ -96,6 +96,7 @@ export function createSessionAttemptController(
+ ): SessionAttemptController {
+   let persistent = Boolean($terminals.get().find(tab => tab.id === id)?.persistent)
+   let resumeOnly = persistent
++  let clearOnRetry = false
+   let replayWrites = 0
+   let retrySession: (() => void) | null = null
+   let cleanupAttempt: (() => void) | null = null
+@@ -224,6 +225,7 @@ export function createSessionAttemptController(
+             if (persistent && exit.signal) {
+               resumeOnly = exit.signal !== 'expired'
+               if (exit.signal === 'expired') {
++                clearOnRetry = true
+                 term.write('\u001bc')
+                 armRetry(TERMINAL_EXIT_MESSAGES.expired)
+               } else {
+@@ -303,6 +305,7 @@ export function createSessionAttemptController(
+           removeExitedTerminal(id)
+         } else if (signal === 'expired') {
+           resumeOnly = false
++          clearOnRetry = true
+           term.write('\u001bc')
+           armRetry(TERMINAL_EXIT_MESSAGES.expired)
+         } else if (hostHas('retryTerminalSpawn') || runsOverSsh(gateway)) {
+@@ -328,7 +331,8 @@ export function createSessionAttemptController(
+     if (!sessionId && retrySession && data === '\r') {
+       const retry = retrySession
+       retrySession = null
+-      if (!resumeOnly) {
++      if (clearOnRetry) {
++        clearOnRetry = false
+         term.write('\u001bc')
+       }
+       setStatus('starting')
+-- 
+2.47.3
+
