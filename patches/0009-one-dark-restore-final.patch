@@ -1,0 +1,1205 @@
+diff --git a/apps/desktop/src/app/chat/sidebar/index.tsx b/apps/desktop/src/app/chat/sidebar/index.tsx
+index b588ae9530..01ef166af9 100644
+--- a/apps/desktop/src/app/chat/sidebar/index.tsx
++++ b/apps/desktop/src/app/chat/sidebar/index.tsx
+@@ -1593,9 +1593,9 @@ export function ChatSidebar({
+                       // resolved region has been observed to swallow clicks on the
+                       // top rows. Same carve-out as USER_BUBBLE_BASE_CLASS in
+                       // thread.tsx.
+-                      'flex h-7 w-full justify-start gap-2 rounded-md border border-transparent px-2 text-left text-[0.8125rem] font-medium text-(--ui-text-secondary) transition-colors duration-100 ease-out [-webkit-app-region:no-drag] hover:bg-(--ui-control-hover-background) hover:text-foreground hover:transition-none',
++                      'flex h-7 w-full justify-start gap-2 rounded-md border-b border-b-(--ui-stroke-tertiary) px-2 text-left text-[0.8125rem] font-medium text-(--ui-text-secondary) transition-colors duration-100 ease-out [-webkit-app-region:no-drag] hover:bg-(--ui-control-hover-background) hover:text-foreground hover:transition-none',
+                       active &&
+-                        'border-(--ui-stroke-tertiary) bg-(--ui-control-active-background) text-foreground shadow-none hover:border-(--ui-stroke-tertiary)!',
++                        'border-b-2! border-b-(--pane-tab-active-accent,var(--theme-primary))! bg-(--ui-control-active-background) text-foreground shadow-none',
+                       !isInteractive &&
+                         'cursor-default hover:border-transparent hover:bg-transparent hover:text-inherit'
+                     )}
+diff --git a/apps/desktop/src/app/chat/sidebar/session-row.tsx b/apps/desktop/src/app/chat/sidebar/session-row.tsx
+index 9f24a5c7db..5afd7583a9 100644
+--- a/apps/desktop/src/app/chat/sidebar/session-row.tsx
++++ b/apps/desktop/src/app/chat/sidebar/session-row.tsx
+@@ -372,13 +372,14 @@ function SidebarSessionRowImpl({
+       <SidebarRowShell
+         actions={card ? undefined : actionsNode}
+         className={cn(
+-          'group row-hover relative',
++          'group row-hover relative border-b border-b-(--ui-stroke-tertiary)',
+           card && SIDEBAR_ROW_CARD_MIN_H,
+           // Density-aware minimum heights for the inline (non-card) row: the
+           // metadata / preview lines below need the extra rows (#68119).
+           !card && density !== 'compact' && 'min-h-[2.75rem]',
+           !card && density === 'detailed' && 'min-h-[3.875rem]',
+-          isSelected && 'bg-(--ui-row-active-background)',
++          isSelected &&
++            'border-b-2! border-b-(--pane-tab-active-accent,var(--theme-primary))! bg-(--ui-row-active-background)',
+           // Open in another pane: the SAME band, just weaker. Its own mixed
+           // token rather than row opacity — dimming the whole row would take
+           // the title and the status dot down with it.
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx b/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx
+index 1fda80a5b8..dfcb2fbe31 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/chrome.tsx
+@@ -14,7 +14,7 @@ export function TerminalPaneChrome() {
+   const terminals = useStore($terminals)
+ 
+   return (
+-    <div className="flex min-h-0 min-w-0 flex-1">
++    <div className="flex h-full min-h-0 min-w-0 flex-1 items-stretch">
+       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+         <TerminalSlot />
+       </div>
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/rail-new-terminal.tsx b/apps/desktop/src/app/right-sidebar/terminal/rail-new-terminal.tsx
+index 7efa51c584..54ba251240 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/rail-new-terminal.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/rail-new-terminal.tsx
+@@ -77,7 +77,7 @@ export function NewTerminalButton({ className }: { className: string }) {
+   )
+ 
+   if (!choices.length) {
+-    return <li className="flex w-full justify-center">{tipped(button)}</li>
++    return <li className="flex w-full shrink-0 justify-center">{tipped(button)}</li>
+   }
+ 
+   const items = (Item: typeof ContextMenuItem | typeof DropdownMenuItem): ReactNode =>
+@@ -89,7 +89,7 @@ export function NewTerminalButton({ className }: { className: string }) {
+     ))
+ 
+   return (
+-    <li className="flex w-full flex-col items-center">
++    <li className="flex w-full shrink-0 flex-col items-center gap-0.5">
+       <ContextMenu>
+         {tipped(<ContextMenuTrigger asChild>{button}</ContextMenuTrigger>)}
+         <ContextMenuContent>
+diff --git a/apps/desktop/src/app/right-sidebar/terminal/rail.tsx b/apps/desktop/src/app/right-sidebar/terminal/rail.tsx
+index 45e999e2b4..9fd84136ba 100644
+--- a/apps/desktop/src/app/right-sidebar/terminal/rail.tsx
++++ b/apps/desktop/src/app/right-sidebar/terminal/rail.tsx
+@@ -47,7 +47,7 @@ export function TerminalRail() {
+ 
+   return (
+     <div
+-      className="group/rail relative z-40 flex h-full w-9 shrink-0 flex-col items-center border-l border-(--ui-stroke-quaternary) bg-(--ui-terminal-surface-background)"
++      className="group/rail relative z-40 flex h-full w-9 shrink-0 self-stretch flex-col items-center border-l border-(--ui-stroke-quaternary) bg-(--ui-terminal-surface-background)"
+       // The rail sits at the pane's outer edge, under the collapsed sidebars'
+       // hover-reveal triggers; mark it so those triggers go pointer-transparent
+       // while it's hovered (see the suppression rules in styles.css) and a reach
+@@ -56,7 +56,7 @@ export function TerminalRail() {
+     >
+       <ul
+         aria-label={t.rightSidebar.terminalsAria}
+-        className="flex min-h-0 flex-1 flex-col items-center gap-0.5 self-stretch overflow-y-auto overflow-x-hidden overscroll-contain py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
++        className="flex min-h-0 flex-1 flex-col items-center gap-1.5 self-stretch overflow-y-auto overflow-x-hidden overscroll-contain py-1.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+         role="tablist"
+       >
+         {terminals.map((term, index) => (
+@@ -109,7 +109,7 @@ function TerminalRailItem({ active, canCloseOthers, index, term, toggleHint }: T
+   return (
+     <ContextMenu>
+       <ContextMenuTrigger asChild>
+-        <li className="relative flex w-full justify-center [-webkit-app-region:no-drag]">
++        <li className="relative flex w-full shrink-0 justify-center [-webkit-app-region:no-drag]">
+           {active && (
+             <span
+               aria-hidden="true"
+diff --git a/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx b/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx
+index 4d56c0e9f7..f2b400b2ed 100644
+--- a/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx
++++ b/apps/desktop/src/components/assistant-ui/thread/message-parts.tsx
+@@ -7,7 +7,7 @@ import {
+   useMessagePartText
+ } from '@assistant-ui/react'
+ import { useStore } from '@nanostores/react'
+-import { type ComponentProps, type FC, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
++import { type ComponentProps, type CSSProperties, type FC, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+ 
+ import { useSessionView } from '@/app/chat/session-view'
+ import { CatalogInstallTool } from '@/components/assistant-ui/catalog-install-tool'
+@@ -344,7 +344,29 @@ const ThinkingDisclosure: FC<{
+           </span>
+         }
+       >
+-        <span className={cn(SCAFFOLD_LABEL_CLASS, pending && 'shimmer')}>{thoughtLabel}</span>
++        {pending ? (
++          // HyperX Sun: each letter rides its own loop. Durations and delays
++          // are a fixed function of the letter index — never re-randomized —
++          // so a re-render resumes the same phase instead of flickering.
++          <span aria-label={thoughtLabel} className={cn(SCAFFOLD_LABEL_CLASS, 'od-sun')}>
++            {Array.from(thoughtLabel).map((letter, index) => (
++              <span
++                aria-hidden="true"
++                key={`${index}-${letter}`}
++                style={
++                  {
++                    '--delay': `-${((index % 8) * 0.25).toFixed(2)}s`,
++                    '--d': `${(1.6 + (index % 8) * 0.19).toFixed(2)}s`
++                  } as CSSProperties
++                }
++              >
++                {letter}
++              </span>
++            ))}
++          </span>
++        ) : (
++          <span className={SCAFFOLD_LABEL_CLASS}>{thoughtLabel}</span>
++        )}
+       </ScaffoldRow>
+       {open && (
+         <div
+diff --git a/apps/desktop/src/components/ui/pane-tab.tsx b/apps/desktop/src/components/ui/pane-tab.tsx
+index 4a2ee7de61..96b44fe6ce 100644
+--- a/apps/desktop/src/components/ui/pane-tab.tsx
++++ b/apps/desktop/src/components/ui/pane-tab.tsx
+@@ -14,26 +14,27 @@ export const PANE_TAB_STRIP_LINE_RIGHT = 'shadow-[inset_-1px_0_0_var(--ui-stroke
+ 
+ // Surface tokens become transparent under glass; the body owns the tint.
+ // The close-button fade masks the label, so it needs no second surface fill.
++// Border rule: bottom only — 1px stroke at rest, 2px accent when active —
++// with no top/left edges, so tabs read as one continuous ruled strip.
+ const TAB =
+-  'group/tab relative flex shrink-0 items-center border-transparent bg-(--tab-bg) text-[0.6875rem] font-medium [-webkit-app-region:no-drag] focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--ui-accent)'
++  'group/tab relative flex shrink-0 items-center border-b border-b-(--ui-stroke-tertiary) bg-(--tab-bg) text-[0.6875rem] font-medium [-webkit-app-region:no-drag] focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--ui-accent)'
+ 
+ // Full height: with the strip's rule removed there is no last-pixel row to
+ // leave uncovered, so tabs fill the bar and no sliver of gutter shows through.
+-const TAB_HORIZONTAL = 'h-full min-w-0 max-w-48 not-first:border-l not-first:border-l-(--ui-stroke-quaternary)'
++const TAB_HORIZONTAL = 'h-full min-w-0 max-w-48'
+ 
+ // A closeable tab's floor keeps short labels left of the close button.
+ // A floor, not padding — a tab already wider than it pays nothing.
+ const TAB_CLOSEABLE = 'min-w-13'
+ 
+-const TAB_VERTICAL =
+-  'w-full max-h-48 justify-center not-first:border-t not-first:border-t-(--ui-stroke-quaternary) [writing-mode:vertical-rl]'
++const TAB_VERTICAL = 'w-full max-h-48 justify-center [writing-mode:vertical-rl]'
+ 
+ const TAB_ACTIVE = 'h-full text-foreground [--tab-bg:var(--pane-tab-active-bg,var(--ui-editor-surface-background))]'
+ 
+-// Horizontal only: the active tab is the sole seam on the strip — a
+-// theme-primary underline drawn as an inset shadow in its own last pixel row,
+-// so it costs no layout and can't shift the tab.
+-const TAB_ACTIVE_UNDERLINE = 'shadow-[inset_0_-2px_0_var(--pane-tab-active-accent,var(--theme-primary))]'
++// The active tab's underline is a real border, not an inset shadow: it sits
++// on the tab's own edge, so it meets the sidebar seam with no 1px step, and
++// border-box height means the thicker rule never shifts the tab.
++const TAB_ACTIVE_UNDERLINE = 'border-b-2! border-b-(--pane-tab-active-accent,var(--theme-primary))!'
+ 
+ // Inactive = gutter, defaulting to the shared chrome surface so a strip that
+ // sets no vars still matches the sidebar/titlebar instead of falling through to
+@@ -107,7 +108,7 @@ export const PaneTab = React.forwardRef<HTMLDivElement, PaneTabProps>(function P
+         !vertical && onClose && TAB_CLOSEABLE,
+         edge,
+         active
+-          ? cn(TAB_ACTIVE, !vertical && TAB_ACTIVE_UNDERLINE)
++          ? cn(TAB_ACTIVE, TAB_ACTIVE_UNDERLINE)
+           : cn(TAB_IDLE, edge && `${edge}-(--ui-stroke-tertiary)`),
+         selected && TAB_SELECTED,
+         className
+diff --git a/apps/desktop/src/components/ui/search-field.tsx b/apps/desktop/src/components/ui/search-field.tsx
+index 269d5501fe..e2359777d2 100644
+--- a/apps/desktop/src/components/ui/search-field.tsx
++++ b/apps/desktop/src/components/ui/search-field.tsx
+@@ -84,6 +84,7 @@ export function SearchField({
+             ),
+         containerClassName
+       )}
++      data-slot="search-field"
+     >
+       <Search className={cn('pointer-events-none shrink-0 text-muted-foreground/70', boxed ? 'size-4' : 'size-3.5')} />
+       {leadingContent}
+diff --git a/apps/desktop/src/styles.css b/apps/desktop/src/styles.css
+index a842217623..e966a06164 100644
+--- a/apps/desktop/src/styles.css
++++ b/apps/desktop/src/styles.css
+@@ -3,6 +3,7 @@
+ @import 'tw-shimmer';
+ @import 'katex/dist/katex.min.css';
+ @import '@vscode/codicons/dist/codicon.css';
++@import './themes/one-dark.css';
+ 
+ /* Titlebar clusters: 24×24 hit targets, 13.9px glyphs. codicon.css is
+    unlayered (`font: 16px/1`); Tailwind utilities in @layer lose that fight. */
+diff --git a/apps/desktop/src/themes/backend-sync.test.ts b/apps/desktop/src/themes/backend-sync.test.ts
+index fe8f517058..af08b17094 100644
+--- a/apps/desktop/src/themes/backend-sync.test.ts
++++ b/apps/desktop/src/themes/backend-sync.test.ts
+@@ -157,6 +157,41 @@ describe('ingestBackendSkin', () => {
+     expect(fresh.$backendThemes.get().neon?.name).toBe('neon')
+   })
+ 
++  it('paints a legacy One Dark snapshot at boot and keeps a saved highlight on reconnect', async () => {
++    const snapshot = {
++      name: 'one-dark',
++      label: 'One-dark',
++      description: 'Hermes skin',
++      colors: { background: '#21252b', foreground: '#abb2bf', primary: '#c678dd' }
++    }
++    const savedName = 'one-dark-accent-2ea043'
++    window.localStorage.setItem('hermes-desktop-backend-themes-v1', JSON.stringify({ 'one-dark': snapshot }))
++    window.localStorage.setItem('hermes-desktop-theme-v2', 'one-dark')
++    vi.resetModules()
++    await import('./context')
++    expect(document.documentElement.style.getPropertyValue('--ui-bg-chrome')).toBe('#282c34')
++    expect(document.documentElement.style.getPropertyValue('--ui-text-tertiary')).toBe('#7f848e')
++    expect(window.localStorage.getItem('hermes-boot-background')).toBe('#282c34')
++
++    window.localStorage.setItem('hermes-desktop-theme-v2', savedName)
++    window.localStorage.setItem(
++      'hermes-desktop-user-themes-v1',
++      JSON.stringify({
++        [savedName]: { ...snapshot, name: savedName, accentOf: 'one-dark' }
++      })
++    )
++    vi.resetModules()
++    const context = await import('./context')
++    const before = document.documentElement.style.getPropertyValue('--theme-midground')
++    expect(before).not.toBe('#c678dd')
++    expect(document.documentElement.style.getPropertyValue('--theme-primary')).toBe('#404754')
++    const fresh = await import('./backend-sync')
++    fresh.ingestBackendSkin(skin('one-dark'), { apply: false })
++    expect(fresh.$pendingSkinApply.get()).toBeNull()
++    expect(context.skinPref.stored('default')).toBe(savedName)
++    expect(document.documentElement.style.getPropertyValue('--theme-midground')).toBe(before)
++  })
++
+   it('drops junk and built-in names from the cached registry', async () => {
+     const mono = { name: 'mono', label: 'x', colors: { background: '#000', foreground: '#fff', primary: '#f0f' } }
+     window.localStorage.setItem('hermes-desktop-backend-themes-v1', JSON.stringify({ mono, bad: { name: 'bad' } }))
+diff --git a/apps/desktop/src/themes/context.test.tsx b/apps/desktop/src/themes/context.test.tsx
+index 36626e5934..8172138c50 100644
+--- a/apps/desktop/src/themes/context.test.tsx
++++ b/apps/desktop/src/themes/context.test.tsx
+@@ -40,6 +40,49 @@ describe('ThemeProvider ← backend skin sync', () => {
+     expect(cssVar('--theme-background-seed')).toBe('#000000')
+   })
+ 
++  it('publishes exact One Dark surfaces, muted text and boot colors, then restores the next theme', () => {
++    let ctx: ReturnType<typeof useTheme>
++    function Probe() {
++      ctx = useTheme()
++
++      return null
++    }
++    render(
++      <ThemeProvider>
++        <Probe />
++      </ThemeProvider>
++    )
++    act(() =>
++      ingestBackendSkin(
++        {
++          name: 'one-dark',
++          colors: { status_bar_bg: '#21252b', ui_accent: '#c678dd', banner_text: '#abb2bf' }
++        },
++        { apply: true }
++      )
++    )
++
++    expect(cssVar('--ui-bg-chrome')).toBe('#282c34')
++    expect(cssVar('--ui-text-tertiary')).toBe('#7f848e')
++    expect(cssVar('--dt-muted-foreground')).toBe('#7f848e')
++    expect(cssVar('--dt-popover')).toBe('#21252b')
++    expect(cssVar('--ui-bg-input')).toBe('#1d1f23')
++    expect(cssVar('--ui-success')).toBe('#98c379')
++    expect(cssVar('--ui-warning')).toBe('#d19a66')
++    expect(window.localStorage.getItem('hermes-boot-background')).toBe('#282c34')
++    expect(JSON.parse(window.localStorage.getItem('hermes-boot-palette')!).background).toBe('#282c34')
++    expect(document.documentElement.dataset.hermesPalette).toBe('one-dark')
++
++    act(() => ctx!.setTheme('everforest'))
++    expect(cssVar('--ui-bg-chrome')).toBe('')
++    expect(cssVar('--ui-text-tertiary')).toBe('')
++    expect(cssVar('--ui-warning')).toBe('')
++    // Removing previous overrides AFTER writing defaults would erase this.
++    expect(cssVar('--ui-success')).toMatch(/^#[0-9a-f]{6}$/i)
++    expect(cssVar('--ui-success')).not.toBe('#98c379')
++    expect(document.documentElement.dataset.hermesPalette).toBeUndefined()
++  })
++
+   it('repaints an in-place edit of the ACTIVE skin (same name, new palette)', () => {
+     render(
+       <ThemeProvider>
+diff --git a/apps/desktop/src/themes/context.tsx b/apps/desktop/src/themes/context.tsx
+index d8fb990816..0181897de0 100644
+--- a/apps/desktop/src/themes/context.tsx
++++ b/apps/desktop/src/themes/context.tsx
+@@ -32,6 +32,7 @@ import {
+ import { writeBootPalette } from './boot-palette'
+ import { $chatFontFamily, resolveChatFontFamily } from './chat-font'
+ import { harmonize, normalizeHex, readableInk } from './color'
++import { isOneDark, oneDarkProperties, themeAccent } from './one-dark'
+ import { BUILTIN_THEME_LIST, DEFAULT_SKIN_NAME, DEFAULT_TYPOGRAPHY, nousTheme, RETIRED_SKINS } from './presets'
+ import { $pendingModeApply } from './request'
+ import { retintTheme } from './retint'
+@@ -232,7 +233,7 @@ export function accentedTheme(theme: DesktopTheme, accent: string): DesktopTheme
+   const base = accentBase(theme)
+   const hex = normalizeHex(accent)
+ 
+-  if (!hex || hex === normalizeHex(base.colors.primary)) {
++  if (!hex || hex === normalizeHex(themeAccent(base))) {
+     return base
+   }
+ 
+@@ -312,6 +313,8 @@ function applyTypographyKnobs(root: HTMLElement, typo: Partial<DesktopThemeTypog
+   }
+ }
+ 
++let previousPaletteProperties: string[] = []
++
+ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily = $chatFontFamily.get()) {
+   if (typeof document === 'undefined') {
+     return
+@@ -324,6 +327,19 @@ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily
+   const isDark = rendered === 'dark'
+   const midground = c.midground ?? c.ring
+   const skinName = theme.name.endsWith(`-${mode}`) ? theme.name.slice(0, -mode.length - 1) : theme.name
++  const exactPalette = isOneDark(theme)
++
++  // Clear before defaults: success/input/solid-primary are also default-owned.
++  for (const property of previousPaletteProperties) {
++    root.style.removeProperty(property)
++  }
++  previousPaletteProperties = []
++
++  if (exactPalette) {
++    root.dataset.hermesPalette = 'one-dark'
++  } else {
++    delete root.dataset.hermesPalette
++  }
+ 
+   root.style.setProperty('color-scheme', rendered)
+   root.dataset.hermesTheme = skinName
+@@ -390,9 +406,17 @@ function applyTheme(theme: DesktopTheme, mode: 'light' | 'dark', chatFontFamily
+     root.style.setProperty(k, v)
+   }
+ 
++  if (exactPalette) {
++    const properties = oneDarkProperties(c)
++    for (const [key, value] of Object.entries(properties)) {
++      root.style.setProperty(key, value)
++    }
++    previousPaletteProperties = Object.keys(properties)
++  }
++
+   applyTypographyKnobs(root, typo)
+ 
+-  const chromeBg = chromeBackground(c.background, isDark)
++  const chromeBg = exactPalette ? c.background : chromeBackground(c.background, isDark)
+ 
+   window.hermesDesktop?.setTitleBarTheme?.({
+     background: chromeBg,
+diff --git a/apps/desktop/src/themes/one-dark-input.test.tsx b/apps/desktop/src/themes/one-dark-input.test.tsx
+new file mode 100644
+index 0000000000..1048bfcc07
+--- /dev/null
++++ b/apps/desktop/src/themes/one-dark-input.test.tsx
+@@ -0,0 +1,83 @@
++import { cleanup, render } from '@testing-library/react'
++import { afterEach, beforeEach, describe, expect, it } from 'vitest'
++
++import { Input } from '@/components/ui/input'
++import { SearchField } from '@/components/ui/search-field'
++import { Select, SelectTrigger } from '@/components/ui/select'
++import { Textarea } from '@/components/ui/textarea'
++
++import stylesheet from './one-dark.css?raw'
++
++let style: HTMLStyleElement
++
++beforeEach(() => {
++  style = document.createElement('style')
++  style.textContent = stylesheet
++  document.head.appendChild(style)
++  document.documentElement.dataset.hermesPalette = 'one-dark'
++})
++
++afterEach(() => {
++  cleanup()
++  style.remove()
++  delete document.documentElement.dataset.hermesPalette
++})
++
++describe('One Dark field surfaces (CSSOM)', () => {
++  it('paints bare fields, adorned wrappers, search and composer without affecting another palette', () => {
++    const { container } = render(
++      <>
++        <Input aria-label="bare" />
++        <Input aria-label="adorned" prefix="$" />
++        <Textarea aria-label="textarea" />
++        <Select>
++          <SelectTrigger aria-label="select" />
++        </Select>
++        <SearchField onChange={() => {}} placeholder="Search" value="" />
++        <div data-slot="command-input-wrapper">
++          <input />
++        </div>
++        <div data-slot="composer-root" data-thread-scrolled-up="">
++          <div data-slot="composer-surface" />
++        </div>
++      </>
++    )
++    const selectors = [
++      '.desktop-input-chrome',
++      '[data-slot="input-group"]',
++      '[data-slot="command-input-wrapper"]',
++      '[data-slot="composer-surface"]'
++    ]
++    for (const selector of selectors) {
++      for (const element of container.querySelectorAll(selector)) {
++        expect(getComputedStyle(element).backgroundColor, selector).toBe('rgb(29, 31, 35)')
++      }
++    }
++    const search = container.querySelector('input[placeholder="Search"]')!.parentElement!
++    expect(getComputedStyle(search).backgroundColor).toBe('rgb(29, 31, 35)')
++    expect(getComputedStyle(search).opacity).toBe('1')
++    expect(
++      getComputedStyle(container.querySelector('[data-slot="composer-root"]')!)
++        .getPropertyValue('--composer-fill')
++        .trim()
++    ).toBe('#1d1f23')
++
++    delete document.documentElement.dataset.hermesPalette
++    expect(getComputedStyle(container.querySelector('[data-slot="input-group"]')!).backgroundColor).not.toBe(
++      'rgb(29, 31, 35)'
++    )
++    expect(getComputedStyle(search).backgroundColor).not.toBe('rgb(29, 31, 35)')
++  })
++
++  it('keeps invalid borders destructive, not the neutral ring', () => {
++    const { getByRole } = render(<Input aria-invalid="true" aria-label="invalid" />)
++    expect(getComputedStyle(getByRole('textbox')).borderColor).toBe('rgb(224, 108, 117)')
++  })
++
++  it('keeps floating lists opaque rather than applying their usual translucent fill', () => {
++    const { container } = render(<div data-slot="popover-content" />)
++    expect(getComputedStyle(container.firstElementChild!).backgroundColor).toBe('rgb(33, 37, 43)')
++    delete document.documentElement.dataset.hermesPalette
++    expect(getComputedStyle(container.firstElementChild!).backgroundColor).not.toBe('rgb(33, 37, 43)')
++  })
++})
+diff --git a/apps/desktop/src/themes/one-dark.css b/apps/desktop/src/themes/one-dark.css
+new file mode 100644
+index 0000000000..5a714ae17d
+--- /dev/null
++++ b/apps/desktop/src/themes/one-dark.css
+@@ -0,0 +1,131 @@
++/* One Dark Pro renderer-only surfaces. */
++
++/* The sidebar/content seam must read as one continuous thread next to the
++   zone rails' --ui-stroke-* lines, so the base translucency is replaced by
++   the Atom border color. html:root outranks the :root.dark redefinition
++   later in styles.css without relying on import order. */
++html:root[data-hermes-palette='one-dark'] {
++  --sidebar-edge-border: #181a1f;
++}
++
++/* Explicit theme colors, not a global change to the glass/input defaults.
++   The marker is runtime provenance, not a user theme's name or slug prefix. */
++:root[data-hermes-palette='one-dark']
++  :is(
++    .desktop-input-chrome,
++    [data-slot='search-field'],
++    [data-slot='command-input-wrapper'],
++    [data-slot='composer-surface'],
++    .ui-prompt-input__container
++  ) {
++  background: #1d1f23;
++}
++
++/* Empty searches normally fade their entire wrapper, including the fill. */
++:root[data-hermes-palette='one-dark'] [data-slot='search-field'] {
++  opacity: 1;
++}
++
++:root[data-hermes-palette='one-dark']
++  :is(
++    [data-slot='popover-content'],
++    [data-slot='dropdown-menu-content'],
++    [data-slot='dropdown-menu-sub-content'],
++    [data-slot='context-menu-content'],
++    [data-slot='context-menu-sub-content'],
++    [data-slot='select-content']
++  ) {
++  background: #21252b;
++}
++
++/* The composer defines this locally for scroll/hover states. A root-only
++   override would lose there and leave its backing/docked surfaces translucent. */
++:root[data-hermes-palette='one-dark'],
++:root[data-hermes-palette='one-dark'] [data-slot='composer-root'],
++:root[data-hermes-palette='one-dark'] [data-slot='composer-root'][data-thread-scrolled-up],
++:root[data-hermes-palette='one-dark']
++  [data-slot='composer-dock']:is(:hover, :focus-within)
++  [data-slot='composer-root'][data-thread-scrolled-up] {
++  --composer-fill: #1d1f23;
++}
++
++:root[data-hermes-palette='one-dark'] .desktop-input-chrome:not([aria-invalid='true']) {
++  border-color: #181a1f;
++}
++
++:root[data-hermes-palette='one-dark'] .desktop-input-chrome[aria-invalid='true'] {
++  border-color: #e06c75;
++}
++
++/* Input's own selection utilities otherwise beat the document selection. */
++:root[data-hermes-palette='one-dark'] ::selection {
++  background: rgba(97, 175, 239, 0.4);
++  color: #e6e6e6;
++}
++
++/* Code-block copy control: icon reads as normal text, hover hands the
++   highlight to the Atom blue, and the button stays a quiet surface. */
++:root[data-hermes-palette='one-dark'] [data-slot='code-card'] > button {
++  color: #abb2bf;
++  background: transparent;
++}
++
++:root[data-hermes-palette='one-dark'] [data-slot='code-card'] > button:hover,
++:root[data-hermes-palette='one-dark'] [data-slot='code-card'] > button:focus-visible {
++  color: #e06c75;
++  background: #3e4451;
++}
++
++/* One Dark Pro formatted answer typography: red headings, orange strong,
++   blue links, neutral #abb2bf list markers, purple checkboxes. */
++:root[data-hermes-palette='one-dark'] .prose {
++  --tw-prose-bullets: #abb2bf;
++  --tw-prose-counters: #abb2bf;
++}
++:root[data-hermes-palette='one-dark'] .aui-md.prose :is(h1,h2,h3,h4,h5,h6) {
++  color: #e06c75;
++}
++:root[data-hermes-palette='one-dark'] .aui-md.prose :is(strong,b) {
++  color: #d19a66;
++}
++:root[data-hermes-palette='one-dark'] .aui-md.prose a {
++  color: #61afef;
++}
++:root[data-hermes-palette='one-dark'] .aui-md.prose :is(ul,ol) > li::marker {
++  color: #abb2bf;
++}
++:root[data-hermes-palette='one-dark'] .aui-md.prose input[type='checkbox'] {
++  accent-color: #c678dd;
++}
++
++/* Titlebar toggles (sidebar show/hide among them) read too faint over the
++   One Dark chrome: the ghost tool button inherits muted-foreground
++   (#7f848e, ~3.1:1 on #282c34 at the class's 85% alpha). Lift the token
++   inside the tool clusters to the One Dark UI gray (#9da5b4, ~4.5:1
++   blended) — colors only; the hover step-up to --color-foreground and
++   every geometry/hit area stay upstream. */
++:root[data-hermes-palette='one-dark'] [data-titlebar-cluster] {
++  --dt-muted-foreground: #9da5b4;
++}
++
++/* HyperX Sun on the live "Thinking" label: white → yellow → red, one letter
++   per loop. The component sets --d/--delay per letter; this file only owns
++   the wave itself. */
++@keyframes od-sun {
++  0%,100% { color:#e63b2e; text-shadow:0 0 2px #e63b2e66 }
++  30%     { color:#ff8c1a; text-shadow:0 0 4px #ff8c1a88 }
++  55%     { color:#ffd23f; text-shadow:0 0 6px #ffd23faa }
++  75%     { color:#fff7e0; text-shadow:0 0 8px #fff7e0cc }
++}
++
++:root[data-hermes-palette='one-dark'] .od-sun > span {
++  animation: od-sun var(--d) ease-in-out var(--delay) infinite;
++}
++
++@media (prefers-reduced-motion: reduce) {
++  :root[data-hermes-palette='one-dark'] .od-sun > span {
++    animation: none;
++    color: #ffd23f;
++    text-shadow: none;
++  }
++}
+diff --git a/apps/desktop/src/themes/one-dark.test.ts b/apps/desktop/src/themes/one-dark.test.ts
+new file mode 100644
+index 0000000000..6a053cb3ec
+--- /dev/null
++++ b/apps/desktop/src/themes/one-dark.test.ts
+@@ -0,0 +1,74 @@
++import { beforeEach, describe, expect, it } from 'vitest'
++
++import { $backendThemes, __resetBackendSkinSync, ingestBackendSkin } from './backend-sync'
++import { isOneDark } from './one-dark'
++import { nousTheme } from './presets'
++import { skinToDesktopTheme } from './skin'
++import { $userThemes, listAllThemes, resolveTheme } from './user-themes'
++
++const legacy = (name = 'one-dark') => ({
++  ...nousTheme,
++  name,
++  label: 'One-dark',
++  colors: { ...nousTheme.colors, background: '#21252b', primary: '#c678dd' },
++  darkColors: { ...nousTheme.colors, background: '#21252b', primary: '#c678dd' }
++})
++
++describe('One Dark cached theme resolution', () => {
++  beforeEach(() => {
++    __resetBackendSkinSync()
++    $userThemes.set({})
++    window.localStorage.clear()
++  })
++
++  it('repairs legacy backend snapshots before connect, without rewriting stored data', () => {
++    const snapshot = legacy()
++    $backendThemes.set({ 'one-dark': snapshot })
++    const stored = window.localStorage.getItem('hermes-desktop-backend-themes-v1')
++    const resolved = resolveTheme('one-dark')!
++    expect(resolved.colors.background).toBe('#282c34')
++    expect(resolved.darkTerminal?.foreground).toBe('#d7dae0')
++    expect(resolved.terminal?.foreground).toBe('#d7dae0')
++    expect(isOneDark(resolved)).toBe(true)
++    expect(listAllThemes().find(t => t.name === 'one-dark')!.colors).toEqual(resolved.colors)
++    expect($backendThemes.get()['one-dark']).toBe(snapshot)
++    expect(window.localStorage.getItem('hermes-desktop-backend-themes-v1')).toBe(stored)
++  })
++
++  it('rehydrates a generated saved accent from JSON without losing its pick', () => {
++    const name = 'one-dark-accent-2ea043'
++    const saved = { ...legacy(name), accentOf: 'one-dark', customCSS: '.mine { color: red; }' }
++    $userThemes.set({ [name]: JSON.parse(JSON.stringify(saved)) })
++    const resolved = resolveTheme(name)!
++    expect(isOneDark(resolved)).toBe(true)
++    expect(resolved.colors.primary).toBe('#404754')
++    expect(resolved.colors.midground).not.toBe('#c678dd')
++    expect(resolved.darkColors).toEqual(resolved.colors)
++    expect(resolved.customCSS).toBe(saved.customCSS)
++    expect(listAllThemes().find(t => t.name === name)!.colors).toEqual(resolved.colors)
++    expect($userThemes.get()[name].colors.background).toBe('#21252b')
++  })
++
++  it('preserves user precedence, arbitrary names and inconsistent accent metadata', () => {
++    ingestBackendSkin({ name: 'one-dark', colors: { ui_accent: '#c678dd' } }, { apply: false })
++    const custom = legacy()
++    const prefix = legacy('one-dark-something')
++    const inconsistent = { ...legacy('one-dark-accent-2ea043'), accentOf: 'other' }
++    $userThemes.set({ 'one-dark': custom, [prefix.name]: prefix, [inconsistent.name]: inconsistent })
++    expect(resolveTheme('one-dark')).toBe(custom)
++    expect(isOneDark(custom)).toBe(false)
++    expect(resolveTheme(prefix.name)).toBe(prefix)
++    expect(resolveTheme(inconsistent.name)).toBe(inconsistent)
++    // Even an explicitly installed copy of the backend palette is user-owned.
++    const installed = JSON.parse(
++      JSON.stringify(
++        skinToDesktopTheme({
++          name: 'one-dark',
++          colors: { ui_accent: '#c678dd' }
++        })
++      )
++    )
++    $userThemes.set({ 'one-dark': installed })
++    expect(isOneDark(resolveTheme('one-dark')!)).toBe(false)
++  })
++})
+diff --git a/apps/desktop/src/themes/one-dark.ts b/apps/desktop/src/themes/one-dark.ts
+new file mode 100644
+index 0000000000..8b46fc04e0
+--- /dev/null
++++ b/apps/desktop/src/themes/one-dark.ts
+@@ -0,0 +1,117 @@
++import type { DesktopTerminalPalette, DesktopTheme, DesktopThemeColors } from './types'
++
++// Runtime-only provenance: a user-installed theme named one-dark is not our preset.
++// Object spreads preserve the symbol; JSON deliberately does not persist it.
++const ONE_DARK = Symbol('one-dark-pro')
++type OneDarkTheme = DesktopTheme & { [ONE_DARK]?: boolean }
++
++export const isOneDark = (theme: DesktopTheme): boolean => (theme as OneDarkTheme)[ONE_DARK] === true
++
++export const themeAccent = (theme: DesktopTheme): string =>
++  isOneDark(theme) ? (theme.colors.midground ?? theme.colors.accent) : theme.colors.primary
++
++const COLORS: DesktopThemeColors = {
++  background: '#282c34',
++  foreground: '#abb2bf',
++  card: '#21252b',
++  cardForeground: '#abb2bf',
++  popover: '#21252b',
++  popoverForeground: '#abb2bf',
++  muted: '#2c313a',
++  mutedForeground: '#7f848e',
++  primary: '#404754',
++  primaryForeground: '#abb2bf',
++  secondary: '#2c313a',
++  secondaryForeground: '#abb2bf',
++  accent: '#e06c75',
++  accentForeground: '#282c34',
++  midground: '#e06c75',
++  midgroundForeground: '#282c34',
++  border: '#181a1f',
++  input: '#1d1f23',
++  ring: '#3e4452',
++  composerRing: '#3e4452',
++  destructive: '#e06c75',
++  destructiveForeground: '#282c34',
++  sidebarBackground: '#282c34',
++  sidebarBorder: '#181a1f',
++  userBubble: '#2c313a',
++  userBubbleBorder: '#3e4452'
++}
++
++const TERMINAL: DesktopTerminalPalette = {
++  foreground: '#d7dae0',
++  cursor: '#61afef',
++  selectionBackground: 'rgba(97, 175, 239, 0.4)',
++  black: '#282c34',
++  red: '#e06c75',
++  green: '#98c379',
++  yellow: '#e5c07b',
++  blue: '#61afef',
++  magenta: '#c678dd',
++  cyan: '#56b6c2',
++  white: '#abb2bf',
++  brightBlack: '#8a919e',
++  brightRed: '#ef8b93',
++  brightGreen: '#b1d696',
++  brightYellow: '#f0d199',
++  brightBlue: '#82c2f5',
++  brightMagenta: '#d699e8',
++  brightCyan: '#74cad5',
++  brightWhite: '#e6e6e6'
++}
++
++/** Used only for a backend skin, never for an arbitrary installed theme. */
++export function oneDarkTheme(theme: DesktopTheme): DesktopTheme {
++  const colors = { ...COLORS }
++  const terminal = { ...TERMINAL }
++
++  return { ...theme, [ONE_DARK]: true, colors, darkColors: colors, terminal, darkTerminal: terminal } as OneDarkTheme
++}
++
++/** Closed renderer policy, not an extensible or persisted CSS-variable bag. */
++export function oneDarkProperties(c: DesktopThemeColors): Record<string, string> {
++  return {
++    '--ui-bg-chrome': c.background,
++    '--ui-bg-sidebar': c.sidebarBackground ?? c.background,
++    '--ui-bg-editor': c.card,
++    '--ui-terminal-surface-background': c.card,
++    '--ui-bg-elevated': c.popover,
++    '--ui-bg-card': c.card,
++    '--ui-bg-input': c.input,
++    '--ui-bg-primary': c.primary,
++    '--ui-bg-secondary': c.secondary,
++    '--ui-bg-tertiary': c.muted,
++    '--ui-bg-quaternary': c.muted,
++    '--ui-bg-quinary': c.muted,
++    '--ui-text-primary': c.foreground,
++    '--ui-text-secondary': c.mutedForeground,
++    '--ui-text-tertiary': c.mutedForeground,
++    '--ui-text-quaternary': c.mutedForeground,
++    '--ui-stroke-primary': c.border,
++    '--ui-stroke-secondary': c.border,
++    '--ui-stroke-tertiary': c.border,
++    '--ui-stroke-quaternary': c.border,
++    '--ui-row-hover-background': c.muted,
++    '--ui-row-active-background': c.muted,
++    '--ui-row-open-background': c.muted,
++    '--ui-control-hover-background': c.muted,
++    '--ui-control-active-background': c.muted,
++    '--ui-chat-bubble-background': c.userBubble ?? c.muted,
++    '--ui-chat-bubble-opaque-background': c.userBubble ?? c.muted,
++    '--ui-selection-background': c.muted,
++    '--ui-success': '#98c379',
++    '--ui-warning': '#d19a66',
++    '--dt-card-foreground': c.cardForeground,
++    '--dt-popover': c.popover,
++    '--dt-popover-foreground': c.popoverForeground,
++    '--dt-muted-foreground': c.mutedForeground,
++    // Desktop uses --dt-input for strokes as well as checkbox borders.
++    '--dt-input': c.border,
++    // The active pane tab's 2px underline follows the accent, not the
++    // neutral primary, so it lines up with the sidebar seam's highlight.
++    '--pane-tab-active-accent': c.accent,
++    '--dt-primary-solid': c.primary,
++    '--dt-primary-solid-foreground': c.primaryForeground
++  }
++}
+diff --git a/apps/desktop/src/themes/persist-accent.test.tsx b/apps/desktop/src/themes/persist-accent.test.tsx
+index c3b38877b8..7fb046c1cf 100644
+--- a/apps/desktop/src/themes/persist-accent.test.tsx
++++ b/apps/desktop/src/themes/persist-accent.test.tsx
+@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+ import { $activeGatewayProfile } from '@/store/profile'
+ 
+ import { $accentOverride, setAccentOverride } from './accent-override'
++import { __resetBackendSkinSync, ingestBackendSkin } from './backend-sync'
+ import { skinPref, ThemeProvider, useTheme } from './context'
+-import { persistAccent } from './persist-accent'
++import { ownAccent, persistAccent } from './persist-accent'
+ import { nousTheme } from './presets'
+ import type { DesktopTheme } from './types'
+ import { $userThemes, installUserTheme, resolveTheme } from './user-themes'
+@@ -30,6 +31,48 @@ afterEach(() => {
+ })
+ 
+ describe('persistAccent', () => {
++  it('previews, saves, reloads and resets the One Dark highlight without changing its neutral primary', () => {
++    __resetBackendSkinSync()
++    ingestBackendSkin({ name: 'one-dark', colors: { ui_accent: '#c678dd' } }, { apply: false })
++    skinPref.assign('default', 'one-dark')
++    const view = render(
++      <ThemeProvider>
++        <ThemeProbe />
++      </ThemeProvider>
++    )
++    expect(ownAccent()).toBe('#e06c75')
++    act(() => setAccentOverride('#2ea043'))
++    const preview = theme.theme.colors
++    expect(preview.primary).toBe('#404754')
++    expect(preview.midground).not.toBe('#c678dd')
++    act(() => persistAccent('#2ea043'))
++    expect(theme.theme.colors).toEqual(preview)
++    expect(theme.themeName).toBe('one-dark-accent-2ea043')
++    const root = document.documentElement.style
++    expect(root.getPropertyValue('--theme-midground')).toBe(preview.midground)
++    expect(root.getPropertyValue('--theme-accent-soft')).toBe(preview.accent)
++    expect(root.getPropertyValue('--theme-primary')).toBe('#404754')
++    expect(root.getPropertyValue('--dt-input')).toBe('#181a1f')
++    expect(root.getPropertyValue('--ui-success')).toBe('#98c379')
++    expect(root.getPropertyValue('--ui-warning')).toBe('#d19a66')
++    const stored = JSON.parse(window.localStorage.getItem('hermes-desktop-user-themes-v1')!)
++    expect(stored[theme.themeName].accentOf).toBe('one-dark')
++    expect(stored[theme.themeName].colors.primary).toBe('#404754')
++    view.unmount()
++    render(
++      <ThemeProvider>
++        <ThemeProbe />
++      </ThemeProvider>
++    )
++    expect(theme.theme.colors).toEqual(preview)
++    act(() => persistAccent('#e06c75'))
++    expect(theme.themeName).toBe('one-dark')
++    expect(theme.theme.colors.accent).toBe('#e06c75')
++    act(() => persistAccent('#e0218a'))
++    act(() => persistAccent(null))
++    expect(theme.themeName).toBe('one-dark')
++  })
++
+   it('saves an accent as the profile theme and returns to Nous on null', () => {
+     render(
+       <ThemeProvider>
+diff --git a/apps/desktop/src/themes/persist-accent.ts b/apps/desktop/src/themes/persist-accent.ts
+index 92becdd30d..e882f61bdb 100644
+--- a/apps/desktop/src/themes/persist-accent.ts
++++ b/apps/desktop/src/themes/persist-accent.ts
+@@ -1,6 +1,7 @@
+ import { setAccentOverride } from './accent-override'
+ import { normalizeHex } from './color'
+ import { accentBase, accentedTheme, committedTheme } from './context'
++import { themeAccent } from './one-dark'
+ import { requestTheme } from './request'
+ import { installUserTheme } from './user-themes'
+ 
+@@ -24,4 +25,4 @@ export function persistAccent(accent: null | string): void {
+ }
+ 
+ /** The accent the live theme's own palette carries, for previewing a return to it. */
+-export const ownAccent = (): string => accentBase(committedTheme()).colors.primary
++export const ownAccent = (): string => themeAccent(accentBase(committedTheme()))
+diff --git a/apps/desktop/src/themes/retint.test.ts b/apps/desktop/src/themes/retint.test.ts
+index a8b52702eb..1a12a16a7d 100644
+--- a/apps/desktop/src/themes/retint.test.ts
++++ b/apps/desktop/src/themes/retint.test.ts
+@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
+ import { hexToOklch, withHue } from './color'
+ import { githubTheme, nousTheme } from './presets'
+ import { retintTheme } from './retint'
++import { skinToDesktopTheme } from './skin'
+ import type { DesktopThemeColors } from './types'
+ 
+ const HUES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]
+@@ -40,6 +41,21 @@ describe('the shipped nous accents', () => {
+ })
+ 
+ describe('retintTheme', () => {
++  it('retints only the One Dark highlight, leaving primary, neutrals and status colors intact', () => {
++    const base = skinToDesktopTheme({ name: 'one-dark', colors: { ui_accent: '#c678dd' } })!
++    expect(retintTheme(base, '#e06c75')).toBe(base)
++    const picked = retintTheme(base, '#2ea043')
++
++    expect(picked.colors.midground).not.toBe(base.colors.midground)
++    expect(picked.colors.accent).toBe(picked.colors.midground)
++    expect(contrastRatio(picked.colors.midground!, base.colors.background)).toBeGreaterThanOrEqual(4.5)
++    expect(contrastRatio(picked.colors.accent, picked.colors.accentForeground)).toBeGreaterThanOrEqual(4.5)
++    const { midground: _m, midgroundForeground: _mf, accent: _a, accentForeground: _af, ...neutrals } = picked.colors
++    const { midground: _bm, midgroundForeground: _bmf, accent: _ba, accentForeground: _baf, ...original } = base.colors
++    expect(neutrals).toEqual(original)
++    expect(picked.darkColors).toEqual(picked.colors)
++  })
++
+   // The load-bearing property: the mix ratios in retint.ts must be the same
+   // ones that produced the shipped palette. If they drift, retinting at the
+   // theme's OWN hue stops being a no-op — and this catches it.
+diff --git a/apps/desktop/src/themes/retint.ts b/apps/desktop/src/themes/retint.ts
+index ff7edb4ec5..9568758af1 100644
+--- a/apps/desktop/src/themes/retint.ts
++++ b/apps/desktop/src/themes/retint.ts
+@@ -36,6 +36,7 @@ import {
+   oklchToHex,
+   readableInk
+ } from './color'
++import { isOneDark, themeAccent } from './one-dark'
+ import type { DesktopTheme, DesktopThemeColors } from './types'
+ 
+ /** Small uppercase sidebar labels paint in the accent, so it must clear AA. */
+@@ -174,10 +175,25 @@ export function retintTheme(theme: DesktopTheme, color: string): DesktopTheme {
+   // Recomputing dark from it would round-trip through OKLCH and land a bit or
+   // two off (#4f9e5e → #509e5f) — invisible, but it would mean "no change"
+   // wasn't actually no change.
+-  if (seed.toLowerCase() === theme.colors.primary.toLowerCase()) {
++  if (seed.toLowerCase() === themeAccent(theme).toLowerCase()) {
+     return theme
+   }
+ 
++  if (isOneDark(theme)) {
++    // Its primary/rings/secondary are deliberately neutral, not an accent family.
++    const accent = seedFor(theme.colors, seed)
++    const foreground = readableInk(accent)
++    const colors = {
++      ...theme.colors,
++      midground: accent,
++      midgroundForeground: foreground,
++      accent,
++      accentForeground: foreground
++    }
++
++    return { ...theme, colors, darkColors: colors }
++  }
++
+   const light = seedFor(theme.colors, seed)
+ 
+   const retinted: DesktopTheme = {
+@@ -199,7 +215,7 @@ export function retintTheme(theme: DesktopTheme, color: string): DesktopTheme {
+ 
+ /** The theme's current accent hue in degrees. */
+ export function themeHue(theme: DesktopTheme): number {
+-  const lch = hexToOklch(theme.colors.primary)
++  const lch = hexToOklch(themeAccent(theme))
+ 
+   return lch ? Math.round(lch.h) : 0
+ }
+diff --git a/apps/desktop/src/themes/skin.test.ts b/apps/desktop/src/themes/skin.test.ts
+index 353a690ad4..76d909b15f 100644
+--- a/apps/desktop/src/themes/skin.test.ts
++++ b/apps/desktop/src/themes/skin.test.ts
+@@ -6,6 +6,31 @@ import { skinToDesktopTheme } from './skin'
+ const withColors = (name: string, colors: Record<string, string>) => skinToDesktopTheme({ name, colors })
+ 
+ describe('skinToDesktopTheme', () => {
++  it('maps One Dark Pro explicitly instead of deriving surfaces from terminal chrome', () => {
++    const theme = withColors('one-dark', {
++      status_bar_bg: '#21252b',
++      banner_text: '#abb2bf',
++      banner_dim: '#5c6370',
++      ui_accent: '#c678dd'
++    })!
++
++    expect(theme.colors).toMatchObject({
++      background: '#282c34',
++      foreground: '#abb2bf',
++      card: '#21252b',
++      popover: '#21252b',
++      primary: '#404754',
++      primaryForeground: '#abb2bf',
++      secondary: '#2c313a',
++      accent: '#e06c75',
++      mutedForeground: '#7f848e',
++      border: '#181a1f',
++      ring: '#3e4452'
++    })
++    expect(theme.darkColors).toEqual(theme.colors)
++    expect(theme.name).toBe('one-dark')
++  })
++
+   it('returns null without a name or colors', () => {
+     expect(skinToDesktopTheme({ name: 'x' })).toBeNull()
+     expect(skinToDesktopTheme({ name: '', colors: { background: '#101010' } })).toBeNull()
+diff --git a/apps/desktop/src/themes/skin.ts b/apps/desktop/src/themes/skin.ts
+index 618942a2d6..f96f3d96d6 100644
+--- a/apps/desktop/src/themes/skin.ts
++++ b/apps/desktop/src/themes/skin.ts
+@@ -19,6 +19,7 @@ import { ensureContrast, mix } from '@hermes/shared/color'
+ import type { HermesSkin, SkinColors } from '@hermes/shared/skin'
+ 
+ import { luminance, normalizeHex, readableInk } from './color'
++import { oneDarkTheme } from './one-dark'
+ import type { DesktopTheme, DesktopThemeColors } from './types'
+ 
+ // The accent labels the sidebar in small uppercase text, so it must clear WCAG AA
+@@ -106,7 +107,7 @@ export function skinToDesktopTheme(skin: HermesSkin): DesktopTheme | null {
+     userBubbleBorder: border
+   }
+ 
+-  return {
++  const theme: DesktopTheme = {
+     name,
+     label: titleCase(name),
+     description: 'Hermes skin',
+@@ -118,4 +119,6 @@ export function skinToDesktopTheme(skin: HermesSkin): DesktopTheme | null {
+     // tag — users put CSS in their skin YAML instead of hacking app.asar.
+     customCSS: skin.customCSS?.trim() || undefined
+   }
++
++  return name === 'one-dark' ? oneDarkTheme(theme) : theme
+ }
+diff --git a/apps/desktop/src/themes/user-themes.ts b/apps/desktop/src/themes/user-themes.ts
+index ee02c93146..e1bf69e8a5 100644
+--- a/apps/desktop/src/themes/user-themes.ts
++++ b/apps/desktop/src/themes/user-themes.ts
+@@ -16,7 +16,9 @@ import { registry } from '@/contrib/registry'
+ import { writeJson } from '@/lib/storage'
+ 
+ import { $backendThemes } from './backend-sync'
++import { isOneDark, oneDarkTheme } from './one-dark'
+ import { BUILTIN_THEMES } from './presets'
++import { retintTheme } from './retint'
+ import { type DesktopTheme, isValidTheme } from './types'
+ 
+ const USER_THEMES_KEY = 'hermes-desktop-user-themes-v1'
+@@ -150,12 +152,27 @@ export function contributedThemes(): DesktopTheme[] {
+ export function resolveTheme(name: string): DesktopTheme | undefined {
+   return (
+     BUILTIN_THEMES[name] ??
+-    $userThemes.get()[name] ??
+-    $backendThemes.get()[name] ??
++    resolvedUserTheme($userThemes.get()[name]) ??
++    resolvedBackendTheme($backendThemes.get()[name]) ??
+     contributedThemes().find(theme => theme.name === name)
+   )
+ }
+ 
++function resolvedBackendTheme(theme: DesktopTheme | undefined): DesktopTheme | undefined {
++  return theme?.name === 'one-dark' && !isOneDark(theme) ? oneDarkTheme(theme) : theme
++}
++
++function resolvedUserTheme(theme: DesktopTheme | undefined): DesktopTheme | undefined {
++  // A real installed base wins, including its accent policy. Only rehydrate the
++  // exact generated naming contract; never treat an arbitrary prefix as ours.
++  if (!theme || $userThemes.get()['one-dark'] || theme.accentOf !== 'one-dark' || isOneDark(theme)) {
++    return theme
++  }
++  const match = /^one-dark-accent-([0-9a-f]{6})$/.exec(theme.name)
++
++  return match ? retintTheme(oneDarkTheme(theme), `#${match[1]}`) : theme
++}
++
+ /** Built-ins first (stable order), then contributed, then backend skins, then user installs. */
+ export function listAllThemes(): DesktopTheme[] {
+   const user = $userThemes.get()
+@@ -165,7 +182,9 @@ export function listAllThemes(): DesktopTheme[] {
+   return [
+     ...Object.values(BUILTIN_THEMES),
+     ...contributedThemes().filter(theme => !shadows(theme)),
+-    ...Object.values(backend).filter(theme => !user[theme.name]),
+-    ...Object.values(user)
++    ...Object.values(backend)
++      .filter(theme => !user[theme.name])
++      .map(theme => resolvedBackendTheme(theme)!),
++    ...Object.values(user).map(theme => resolvedUserTheme(theme)!)
+   ]
+ }
+diff --git a/apps/desktop/vitest.config.ts b/apps/desktop/vitest.config.ts
+index 80091e8933..2e4f166c69 100644
+--- a/apps/desktop/vitest.config.ts
++++ b/apps/desktop/vitest.config.ts
+@@ -7,7 +7,7 @@ const reactUi: TestProjectConfiguration = {
+     name: 'ui',
+     environment: 'jsdom',
+     // Keep padding regressions observable instead of mocking the stylesheet away.
+-    css: { include: [/status-stack\.css$/] },
++    css: { include: [/status-stack\.css$/, /one-dark\.css(?:\?|$)/] },
+     setupFiles: ['./vitest.setup.ts'],
+     include: ['src/**/*.test.{ts,tsx}'],
+     globals: true,
+diff --git a/docs/adr/0001-one-dark-pro-visual-only-boundary.md b/docs/adr/0001-one-dark-pro-visual-only-boundary.md
+new file mode 100644
+index 0000000000..191f9c5792
+--- /dev/null
++++ b/docs/adr/0001-one-dark-pro-visual-only-boundary.md
+@@ -0,0 +1,84 @@
++# ADR 0001: One Dark Pro is a visual-only skin — the skin/behavior boundary
++
++- Status: Accepted
++- Date: 2026-11-26
++- Scope: Hermes desktop themes (apps/desktop/src/themes), contribution policy for theme PRs
++
++## Context
++
++The One Dark Pro desktop theme (preset in `apps/desktop/src/themes/one-dark.ts`,
++scoped styles in `one-dark.css`, plus the integration glue in `skin.ts`,
++`persist-accent.ts`, `user-themes.ts` and `context.tsx`) was visually approved by
++the Maintainer: background `#282c34`, accent `#61afef`, borders `#181a1f`.
++
++An earlier iteration of the contribution (superseded PR #159253, closed
++2026-11-23) also carried fixes that changed renderer *behavior*: terminal zoom
++unscale corrections, terminal output anchoring, scrollback preservation on
++transport retry, and boot-gap stripping. Those are quality fixes, but they are
++not theme work. Bundling them into a theme PR makes the PR impossible to review
++as a skin, couples cosmetic adoption to functional risk, and forces maintainers
++to re-validate terminal behavior when they only asked for a palette.
++
++## Decision
++
++One Dark Pro is exclusively a **visual layer**. The boundary between the skin
++and upstream Hermes behavior is:
++
++### The theme owns (customizable)
++
++- Palette: backgrounds, foregrounds, borders/separators, contrast levels.
++- Colors of text, selection, accent, and visual states (hover/focus/active
++  *colors*, not their mechanics).
++- Appearance-only surface styling expressed through the existing theme token
++  system (`oneDarkProperties`, scoped CSS under
++  `:root[data-hermes-palette='one-dark']`) or the terminal palette.
++
++### Upstream Hermes owns (must be preserved unchanged by a theme)
++
++- Component structure and composition.
++- Navigation, menus, sidebar and its toggle, and overall layout.
++- Terminal behavior: scrollback, retries, output anchoring, zoom handling.
++- Functional accessibility and the original UX (hit areas, keyboard
++  interaction, focus order, motion mechanics).
++
++### The boundary rule
++
++A skin may change **what the app looks like**; it may not change **what the app
++does** or **how it is arranged**. If a change requires touching component
++structure, element geometry, event handling, or terminal/zoom logic to achieve
++its look, it is out of scope for a theme PR — even when the motivation is
++visual.
++
++## Criteria
++
++### Accepting a visual improvement in a theme PR
++
++- It expresses itself through palette values, theme tokens, or scoped CSS.
++- It preserves upstream geometry, positioning, structure and interaction
++  mechanics (hover/focus/active behavior included).
++- It degrades to the upstream look when the palette marker is removed.
++- It is testable as a color/token assertion, not as a behavior assertion.
++
++### Rejecting a functional change inside a theme PR
++
++- It changes what a component renders structurally or how it behaves.
++- It modifies terminal session handling, zoom math, or layout logic.
++- Its tests assert behavior instead of tokens/colors.
++- It would need a behavior-level review independent of the palette.
++
++Functional improvements discovered while theming are welcome — as **separate,
++independent contributions** against upstream, with their own justification and
++review. The zoom/terminal corrections removed from this contribution were split
++out for exactly that purpose.
++
++## Consequences
++
++- Theme PRs review as diffs of colors and tokens; functional review is not
++  required and upstream behavior diffs should be treated as red flags.
++- Upstream may evolve component structure, zoom handling, and terminal behavior
++  freely; the theme rebases as a thin palette layer with no semantic conflicts.
++- The One Dark Pro preset stays compatible with future theme-system work
++  (persist-accent, retint, user-themes) because it only feeds the existing
++  token contract.
++- Future visual improvements to One Dark Pro remain allowed and expected, as
++  long as they respect this separation.
