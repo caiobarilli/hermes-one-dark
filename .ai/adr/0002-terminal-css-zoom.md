@@ -29,3 +29,12 @@ Additional layout and session defects also affected the integrated terminal:
 - At 100% and 110% UI scale, the terminal prompt starts flush below the `TERMINAL` header, the `+` button is clearly visible and spaced, and the right vertical rail border runs uninterrupted to the bottom.
 - Parameterized Vitest coverage (`0.9`, `1`, `1.1`, `1.25`, `1.5`) protects both `PersistentTerminal` and `terminalSelectionAnchor`.
 - **Known upstream limitation (unchanged):** Mouse click/selection hit-testing inside xterm.js's canvas under CSS `zoom !== 1` is an upstream xterm.js limitation and is deliberately left untouched.
+
+## Status update (2026-11-26)
+
+These zoom/terminal fixes are **functional** changes and were deliberately
+**excluded** from the visual-only theme contribution
+[NousResearch/hermes-agent#160350](https://github.com/NousResearch/hermes-agent/pull/160350)
+(see ADR 0003). The historical patches `0002`–`0004` and `0007`–`0008` remain in
+`patches/` as reference for that future, independently validated contribution —
+they are not part of the theme integration (`0009-one-dark-restore-final.patch`).
